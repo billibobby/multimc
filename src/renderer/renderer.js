@@ -347,32 +347,40 @@ function updateServerStatus() {
         return;
     }
 
-    const serverItems = serverStatus.activeServers.map(server => `
-        <div class="server-card" onclick="showServerDetails('${server.id}')">
-            <div class="server-header">
-                <div class="server-name">${server.name}</div>
-                <div class="server-status ${server.status}">${server.status}</div>
+    const serverItems = serverStatus.activeServers.map(server => {
+        const statusIcon = getServerStatusIcon(server.status);
+        const statusClass = getServerStatusClass(server.status);
+        
+        return `
+            <div class="server-card" onclick="showServerDetails('${server.id}')">
+                <div class="server-header">
+                    <div class="server-name">${server.name}</div>
+                    <div class="server-status-indicator ${statusClass}">
+                        <i class="${statusIcon}"></i>
+                        ${server.status}
+                    </div>
+                </div>
+                <div class="server-info">
+                    <div class="server-info-item">
+                        <div class="server-info-label">Type</div>
+                        <div class="server-info-value">${server.type}</div>
+                    </div>
+                    <div class="server-info-item">
+                        <div class="server-info-label">Version</div>
+                        <div class="server-info-value">${server.version}</div>
+                    </div>
+                    <div class="server-info-item">
+                        <div class="server-info-label">Port</div>
+                        <div class="server-info-value">${server.port}</div>
+                    </div>
+                    <div class="server-info-item">
+                        <div class="server-info-label">Host</div>
+                        <div class="server-info-value">${server.hostId.substring(0, 8)}...</div>
+                    </div>
+                </div>
             </div>
-            <div class="server-info">
-                <div class="server-info-item">
-                    <div class="server-info-label">Type</div>
-                    <div class="server-info-value">${server.type}</div>
-                </div>
-                <div class="server-info-item">
-                    <div class="server-info-label">Version</div>
-                    <div class="server-info-value">${server.version}</div>
-                </div>
-                <div class="server-info-item">
-                    <div class="server-info-label">Port</div>
-                    <div class="server-info-value">${server.port}</div>
-                </div>
-                <div class="server-info-item">
-                    <div class="server-info-label">Host</div>
-                    <div class="server-info-value">${server.hostId.substring(0, 8)}...</div>
-                </div>
-            </div>
-        </div>
-    `);
+        `;
+    });
 
     content.innerHTML = serverItems.join('');
 }
@@ -410,40 +418,48 @@ function loadServersData() {
         return;
     }
 
-    const serverCards = serverStatus.activeServers.map(server => `
-        <div class="server-card" onclick="showServerDetails('${server.id}')">
-            <div class="server-header">
-                <div class="server-name">${server.name}</div>
-                <div class="server-status ${server.status}">${server.status}</div>
+    const serverCards = serverStatus.activeServers.map(server => {
+        const statusIcon = getServerStatusIcon(server.status);
+        const statusClass = getServerStatusClass(server.status);
+        
+        return `
+            <div class="server-card" onclick="showServerDetails('${server.id}')">
+                <div class="server-header">
+                    <div class="server-name">${server.name}</div>
+                    <div class="server-status-indicator ${statusClass}">
+                        <i class="${statusIcon}"></i>
+                        ${server.status}
+                    </div>
+                </div>
+                <div class="server-info">
+                    <div class="server-info-item">
+                        <div class="server-info-label">Type</div>
+                        <div class="server-info-value">${server.type}</div>
+                    </div>
+                    <div class="server-info-item">
+                        <div class="server-info-label">Version</div>
+                        <div class="server-info-value">${server.version}</div>
+                    </div>
+                    <div class="server-info-item">
+                        <div class="server-info-label">Port</div>
+                        <div class="server-info-value">${server.port}</div>
+                    </div>
+                    <div class="server-info-item">
+                        <div class="server-info-label">Max Players</div>
+                        <div class="server-info-value">${server.maxPlayers}</div>
+                    </div>
+                </div>
+                <div class="server-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); copyServerAddress('${server.hostAddress}:${server.port}')">
+                        <i class="fas fa-copy"></i> Copy Address
+                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); takeOverHost('${server.id}')">
+                        <i class="fas fa-exchange-alt"></i> Take Over
+                    </button>
+                </div>
             </div>
-            <div class="server-info">
-                <div class="server-info-item">
-                    <div class="server-info-label">Type</div>
-                    <div class="server-info-value">${server.type}</div>
-                </div>
-                <div class="server-info-item">
-                    <div class="server-info-label">Version</div>
-                    <div class="server-info-value">${server.version}</div>
-                </div>
-                <div class="server-info-item">
-                    <div class="server-info-label">Port</div>
-                    <div class="server-info-value">${server.port}</div>
-                </div>
-                <div class="server-info-item">
-                    <div class="server-info-label">Max Players</div>
-                    <div class="server-info-value">${server.maxPlayers}</div>
-                </div>
-            </div>
-            <div class="server-actions">
-                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); copyServerAddress('${server.hostAddress}:${server.port}')">
-                    <i class="fas fa-copy"></i> Copy Address
-                </button>
-                <button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); takeOverHost('${server.id}')">
-                    <i class="fas fa-exchange-alt"></i> Take Over
-                </button>
-            </div>
-        </div>
-    `);
+        `;
+    });
 
     grid.innerHTML = serverCards.join('');
 }
@@ -763,8 +779,44 @@ async function startServer() {
         return;
     }
 
-    // Show loading notification
-    showNotification('Starting server...', 'info');
+    // Get UI elements
+    const startBtn = document.getElementById('start-server-btn');
+    const cancelBtn = document.getElementById('cancel-start-btn');
+    const progressContainer = document.getElementById('server-start-progress');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+
+    // Show progress UI
+    startBtn.style.display = 'none';
+    progressContainer.style.display = 'block';
+    
+    // Disable cancel button during startup
+    cancelBtn.disabled = true;
+
+    // Progress simulation with real-time updates
+    const progressSteps = [
+        { progress: 10, text: 'Validating server configuration...' },
+        { progress: 20, text: 'Checking Java installation...' },
+        { progress: 30, text: 'Verifying server files...' },
+        { progress: 40, text: 'Creating server directory...' },
+        { progress: 50, text: 'Downloading server files...' },
+        { progress: 60, text: 'Configuring server properties...' },
+        { progress: 70, text: 'Starting server process...' },
+        { progress: 80, text: 'Initializing server...' },
+        { progress: 90, text: 'Waiting for server to be ready...' },
+        { progress: 100, text: 'Server is starting up...' }
+    ];
+
+    let currentStep = 0;
+    const progressInterval = setInterval(() => {
+        if (currentStep < progressSteps.length) {
+            const step = progressSteps[currentStep];
+            progressFill.style.width = step.progress + '%';
+            progressText.textContent = step.text;
+            currentStep++;
+        }
+    }, 800);
+
     console.log('Starting server with config:', { name, type, version, port, maxPlayers, autoStart });
 
     try {
@@ -777,20 +829,57 @@ async function startServer() {
             autoStart
         });
 
+        clearInterval(progressInterval);
         console.log('Server start result:', result);
 
         if (result.success) {
-            showNotification('Server started successfully!', 'success');
-            closeModal('start-server-modal');
-            refreshStatus();
+            progressFill.style.width = '100%';
+            progressText.textContent = 'Server started successfully!';
+            progressFill.style.background = 'linear-gradient(90deg, #4caf50, #45a049)';
+            
+            setTimeout(() => {
+                showNotification('Server started successfully!', 'success');
+                closeModal('start-server-modal');
+                refreshStatus();
+            }, 1000);
         } else {
+            progressFill.style.background = 'linear-gradient(90deg, #f44336, #d32f2f)';
+            progressText.textContent = 'Failed to start server';
             showNotification(`Failed to start server: ${result.error}`, 'error');
             console.error('Server start failed:', result.error);
+            
+            // Reset UI after error
+            setTimeout(() => {
+                resetStartServerUI();
+            }, 3000);
         }
     } catch (error) {
+        clearInterval(progressInterval);
+        progressFill.style.background = 'linear-gradient(90deg, #f44336, #d32f2f)';
+        progressText.textContent = 'Error starting server';
         showNotification(`Error starting server: ${error.message}`, 'error');
         console.error('Server start error:', error);
+        
+        // Reset UI after error
+        setTimeout(() => {
+            resetStartServerUI();
+        }, 3000);
     }
+}
+
+function resetStartServerUI() {
+    const startBtn = document.getElementById('start-server-btn');
+    const cancelBtn = document.getElementById('cancel-start-btn');
+    const progressContainer = document.getElementById('server-start-progress');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+
+    startBtn.style.display = 'inline-flex';
+    progressContainer.style.display = 'none';
+    cancelBtn.disabled = false;
+    progressFill.style.width = '0%';
+    progressFill.style.background = 'linear-gradient(90deg, #4fc3f7, #29b6f6)';
+    progressText.textContent = 'Initializing...';
 }
 
 async function stopServer() {
@@ -977,6 +1066,36 @@ function getStatusText(check) {
         return check.message || 'Error';
     } else {
         return check.message || 'Warning';
+    }
+}
+
+function getServerStatusIcon(status) {
+    switch (status) {
+        case 'running':
+            return 'fas fa-play-circle';
+        case 'starting':
+            return 'fas fa-spinner fa-spin';
+        case 'stopped':
+            return 'fas fa-stop-circle';
+        case 'error':
+            return 'fas fa-exclamation-triangle';
+        default:
+            return 'fas fa-question-circle';
+    }
+}
+
+function getServerStatusClass(status) {
+    switch (status) {
+        case 'running':
+            return 'running';
+        case 'starting':
+            return 'starting';
+        case 'stopped':
+            return 'stopped';
+        case 'error':
+            return 'error';
+        default:
+            return 'stopped';
     }
 }
 

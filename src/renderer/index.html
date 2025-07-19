@@ -460,8 +460,16 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('start-server-modal')">Cancel</button>
-                <button class="btn btn-primary" onclick="startServer()">Start Server</button>
+                <button class="btn btn-secondary" onclick="closeModal('start-server-modal')" id="cancel-start-btn">Cancel</button>
+                <button class="btn btn-primary" onclick="startServer()" id="start-server-btn">
+                    <i class="fas fa-play"></i> Start Server
+                </button>
+                <div id="server-start-progress" class="progress-container" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="progress-text" id="progress-text">Initializing...</div>
+                </div>
             </div>
         </div>
     </div>
