@@ -1170,6 +1170,16 @@ body {
     100% { transform: rotate(360deg); }
 }
 
+/* Custom spinning animation for refresh buttons */
+@keyframes refreshSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.refresh-spinning {
+    animation: refreshSpin 1s linear infinite;
+}
+
 /* Notifications */
 .notification-container {
     position: fixed;

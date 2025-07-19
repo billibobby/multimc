@@ -32,7 +32,7 @@ async function scanMinecraftInstallations() {
   
   try {
     // Show loading state
-    scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+            scanBtn.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i> Scanning...';
     scanBtn.disabled = true;
     
     // Hide previous results
@@ -764,7 +764,7 @@ async function refreshDownloads() {
     const refreshButton = document.querySelector('#downloads .downloads-header .btn');
     if (refreshButton) {
         const originalText = refreshButton.innerHTML;
-        refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i> Refreshing...';
         refreshButton.disabled = true;
         
         try {
@@ -809,7 +809,7 @@ async function refreshEntireApp() {
     let originalText = '';
     if (refreshButton) {
         originalText = refreshButton.innerHTML;
-        refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i>';
         refreshButton.disabled = true;
         refreshButton.title = 'Refreshing...';
     }
