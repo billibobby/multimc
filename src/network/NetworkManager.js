@@ -15,6 +15,7 @@ class NetworkManager extends EventEmitter {
     this.localPeerId = crypto.randomUUID();
     this.discoveryPort = 3001;
     this.communicationPort = 3002;
+    this.webServerPort = 3003;
     this.discoverySocket = null;
     this.communicationSocket = null;
     this.server = null;
@@ -27,8 +28,35 @@ class NetworkManager extends EventEmitter {
     fs.ensureDirSync(this.profilesDir);
   }
 
+  async findAvailablePort(startPort) {
+    const net = require('net');
+    
+    return new Promise((resolve) => {
+      const server = net.createServer();
+      
+      server.listen(startPort, () => {
+        const port = server.address().port;
+        server.close(() => {
+          resolve(port);
+        });
+      });
+      
+      server.on('error', () => {
+        // Port is in use, try next port
+        this.findAvailablePort(startPort + 1).then(resolve);
+      });
+    });
+  }
+
   async initialize() {
     try {
+      // Find available ports
+      this.discoveryPort = await this.findAvailablePort(this.discoveryPort);
+      this.communicationPort = await this.findAvailablePort(this.communicationPort);
+      this.webServerPort = await this.findAvailablePort(this.webServerPort);
+      
+      console.log(`Using ports - Discovery: ${this.discoveryPort}, Communication: ${this.communicationPort}, Web: ${this.webServerPort}`);
+      
       await this.startDiscoveryService();
       await this.startCommunicationService();
       await this.startWebServer();
@@ -47,41 +75,61 @@ class NetworkManager extends EventEmitter {
   }
 
   async startDiscoveryService() {
-    this.discoverySocket = dgram.createSocket('udp4');
-    
-    this.discoverySocket.on('error', (err) => {
-      console.error('Discovery socket error:', err);
-    });
+    return new Promise((resolve, reject) => {
+      this.discoverySocket = dgram.createSocket('udp4');
+      
+      this.discoverySocket.on('error', (err) => {
+        console.error('Discovery socket error:', err);
+        if (err.code === 'EADDRINUSE') {
+          console.log(`Port ${this.discoveryPort} is in use, trying next port...`);
+          this.discoveryPort++;
+          this.discoverySocket.bind(this.discoveryPort);
+        } else {
+          reject(err);
+        }
+      });
 
-    this.discoverySocket.on('message', (msg, rinfo) => {
-      this.handleDiscoveryMessage(msg, rinfo);
-    });
+      this.discoverySocket.on('message', (msg, rinfo) => {
+        this.handleDiscoveryMessage(msg, rinfo);
+      });
 
-    this.discoverySocket.on('listening', () => {
-      const address = this.discoverySocket.address();
-      console.log(`Discovery service listening on ${address.address}:${address.port}`);
-    });
+      this.discoverySocket.on('listening', () => {
+        const address = this.discoverySocket.address();
+        console.log(`Discovery service listening on ${address.address}:${address.port}`);
+        resolve();
+      });
 
-    this.discoverySocket.bind(this.discoveryPort);
+      this.discoverySocket.bind(this.discoveryPort);
+    });
   }
 
   async startCommunicationService() {
-    this.communicationSocket = dgram.createSocket('udp4');
-    
-    this.communicationSocket.on('error', (err) => {
-      console.error('Communication socket error:', err);
-    });
+    return new Promise((resolve, reject) => {
+      this.communicationSocket = dgram.createSocket('udp4');
+      
+      this.communicationSocket.on('error', (err) => {
+        console.error('Communication socket error:', err);
+        if (err.code === 'EADDRINUSE') {
+          console.log(`Port ${this.communicationPort} is in use, trying next port...`);
+          this.communicationPort++;
+          this.communicationSocket.bind(this.communicationPort);
+        } else {
+          reject(err);
+        }
+      });
 
-    this.communicationSocket.on('message', (msg, rinfo) => {
-      this.handleCommunicationMessage(msg, rinfo);
-    });
+      this.communicationSocket.on('message', (msg, rinfo) => {
+        this.handleCommunicationMessage(msg, rinfo);
+      });
 
-    this.communicationSocket.on('listening', () => {
-      const address = this.communicationSocket.address();
-      console.log(`Communication service listening on ${address.address}:${address.port}`);
-    });
+      this.communicationSocket.on('listening', () => {
+        const address = this.communicationSocket.address();
+        console.log(`Communication service listening on ${address.address}:${address.port}`);
+        resolve();
+      });
 
-    this.communicationSocket.bind(this.communicationPort);
+      this.communicationSocket.bind(this.communicationPort);
+    });
   }
 
   async startWebServer() {
@@ -164,10 +212,20 @@ class NetworkManager extends EventEmitter {
     this.server = server;
     this.io = io;
     
-    return new Promise((resolve) => {
-      server.listen(3003, () => {
-        console.log('Web server listening on port 3003');
+    return new Promise((resolve, reject) => {
+      server.listen(this.webServerPort, () => {
+        console.log(`Web server listening on port ${this.webServerPort}`);
         resolve();
+      });
+      
+      server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          console.log(`Port ${this.webServerPort} is in use, trying next port...`);
+          this.webServerPort++;
+          server.listen(this.webServerPort);
+        } else {
+          reject(err);
+        }
       });
     });
   }

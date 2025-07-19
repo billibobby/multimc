@@ -176,21 +176,33 @@ ipcMain.handle('get-system-status', async () => {
 
 ipcMain.handle('get-network-status', () => {
   logger.debug('Getting network status');
+  if (!networkManager) {
+    return { error: 'Network manager not initialized' };
+  }
   return networkManager.getStatus();
 });
 
 ipcMain.handle('get-server-status', () => {
   logger.debug('Getting server status');
+  if (!serverManager) {
+    return { error: 'Server manager not initialized' };
+  }
   return serverManager.getStatus();
 });
 
 ipcMain.handle('get-user-profile', async () => {
   logger.debug('Getting user profile');
+  if (!networkManager) {
+    return { error: 'Network manager not initialized' };
+  }
   return await networkManager.getCurrentProfile();
 });
 
 ipcMain.handle('save-user-profile', async (event, profile) => {
   try {
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
     logger.profile('Saving user profile', { id: profile.id, name: profile.displayName });
     await networkManager.saveProfile(profile);
     return { success: true };
@@ -202,6 +214,9 @@ ipcMain.handle('save-user-profile', async (event, profile) => {
 
 ipcMain.handle('start-server', async (event, config) => {
   try {
+    if (!serverManager) {
+      return { success: false, error: 'Server manager not initialized' };
+    }
     logger.server('Starting server', config);
     const result = await serverManager.startServer(config);
     logger.server('Server started successfully', { id: result.id, name: result.name });
@@ -214,6 +229,9 @@ ipcMain.handle('start-server', async (event, config) => {
 
 ipcMain.handle('stop-server', async (event, serverId) => {
   try {
+    if (!serverManager) {
+      return { success: false, error: 'Server manager not initialized' };
+    }
     logger.server('Stopping server', { id: serverId });
     await serverManager.stopServer(serverId);
     logger.server('Server stopped successfully', { id: serverId });
@@ -226,6 +244,9 @@ ipcMain.handle('stop-server', async (event, serverId) => {
 
 ipcMain.handle('transfer-host', async (event, serverId, newHostId) => {
   try {
+    if (!serverManager) {
+      return { success: false, error: 'Server manager not initialized' };
+    }
     logger.server('Transferring host', { serverId, newHostId });
     const result = await serverManager.transferHost(serverId, newHostId);
     logger.server('Host transfer completed', { serverId, newHostId });
@@ -238,6 +259,9 @@ ipcMain.handle('transfer-host', async (event, serverId, newHostId) => {
 
 ipcMain.handle('take-over-host', async (event, serverId) => {
   try {
+    if (!serverManager) {
+      return { success: false, error: 'Server manager not initialized' };
+    }
     logger.server('Taking over host', { serverId });
     const result = await serverManager.takeOverHost(serverId);
     logger.server('Host takeover completed', { serverId });
