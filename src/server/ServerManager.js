@@ -83,9 +83,12 @@ class ServerManager extends EventEmitter {
 
   async startServer(config, isRestore = false) {
     try {
+      console.log('ServerManager.startServer called with config:', config);
+      
       const serverId = crypto.randomUUID();
       const serverDir = path.join(this.serversDir, serverId);
       
+      console.log('Creating server directory:', serverDir);
       // Create server directory
       await fs.ensureDir(serverDir);
       
@@ -96,6 +99,8 @@ class ServerManager extends EventEmitter {
       } else if (config.type === 'forge') {
         serverJarPath = path.join(os.homedir(), '.multimc-hub', 'forge', `forge-${config.version}.jar`);
       }
+      
+      console.log('Looking for server jar at:', serverJarPath);
       
       // Check if server jar exists
       if (!await fs.pathExists(serverJarPath)) {

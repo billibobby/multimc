@@ -765,6 +765,7 @@ async function startServer() {
 
     // Show loading notification
     showNotification('Starting server...', 'info');
+    console.log('Starting server with config:', { name, type, version, port, maxPlayers, autoStart });
 
     try {
         const result = await ipcRenderer.invoke('start-server', {
@@ -776,15 +777,19 @@ async function startServer() {
             autoStart
         });
 
+        console.log('Server start result:', result);
+
         if (result.success) {
             showNotification('Server started successfully!', 'success');
             closeModal('start-server-modal');
             refreshStatus();
         } else {
             showNotification(`Failed to start server: ${result.error}`, 'error');
+            console.error('Server start failed:', result.error);
         }
     } catch (error) {
         showNotification(`Error starting server: ${error.message}`, 'error');
+        console.error('Server start error:', error);
     }
 }
 
