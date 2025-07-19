@@ -2280,8 +2280,8 @@ async function downloadVersion(loader, version, event) {
             // Refresh the downloads section to show installed status
             await loadDownloadsData();
             
-            // Also refresh the entire app to ensure everything is updated
-            await refreshEntireApp();
+            // Update system status display
+            updateSystemStatus();
             
         } else {
             throw new Error(result.error || 'Download failed');
@@ -2411,4 +2411,6 @@ window.exportLogs = exportLogs;
 window.downloadVersion = downloadVersion;
 window.showDownloadProgressModal = showDownloadProgressModal;
 window.hideDownloadProgressModal = hideDownloadProgressModal;
-window.updateDownloadProgress = updateDownloadProgress; 
+window.updateDownloadProgress = updateDownloadProgress;
+window.refreshEntireApp = refreshEntireApp;
+window.refreshDownloads = refreshDownloads; 
