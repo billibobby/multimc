@@ -611,34 +611,7 @@ ipcMain.handle('check-port', async (event, port) => {
   }
 });
 
-ipcMain.handle('get-server-logs', async (event, serverId, lines = 100) => {
-  try {
-    logger.debug('Getting server logs', { serverId, lines });
-    
-    if (!serverManager) {
-      return { success: false, error: 'Server manager not initialized' };
-    }
-    
-    const server = serverManager.activeServers.get(serverId);
-    if (!server) {
-      return { success: false, error: 'Server not found' };
-    }
-    
-    const logPath = path.join(server.directory, 'logs', 'latest.log');
-    const logContent = await fs.readFile(logPath, 'utf8');
-    const logLines = logContent.split('\n').filter(line => line.trim());
-    
-    return { 
-      success: true, 
-      logs: logLines.slice(-lines),
-      serverName: server.name,
-      serverId: server.id
-    };
-  } catch (error) {
-    logger.error('Failed to get server logs:', error);
-    return { success: false, error: error.message };
-  }
-});
+
 
 // Get list of available server log files
 ipcMain.handle('get-server-log-files', async () => {
@@ -993,6 +966,134 @@ ipcMain.handle('get-modded-setup-guide', async (event, serviceId, serverConfig) 
     return { success: true, guide };
   } catch (error) {
     logger.error('Failed to get modded setup guide:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Contact Management IPC handlers
+ipcMain.handle('get-contacts', async () => {
+  try {
+    logger.debug('Getting contacts');
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    const contacts = networkManager.getContacts();
+    return { success: true, contacts };
+  } catch (error) {
+    logger.error('Failed to get contacts:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('add-contact', async (event, peerId, contactInfo) => {
+  try {
+    logger.debug('Adding contact', { peerId, contactInfo });
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    const contact = await networkManager.addContact(peerId, contactInfo);
+    return { success: true, contact };
+  } catch (error) {
+    logger.error('Failed to add contact:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('remove-contact', async (event, peerId) => {
+  try {
+    logger.debug('Removing contact', { peerId });
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    const contact = await networkManager.removeContact(peerId);
+    return { success: true, contact };
+  } catch (error) {
+    logger.error('Failed to remove contact:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('block-peer', async (event, peerId) => {
+  try {
+    logger.debug('Blocking peer', { peerId });
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    await networkManager.blockPeer(peerId);
+    return { success: true };
+  } catch (error) {
+    logger.error('Failed to block peer:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Invitation Management IPC handlers
+ipcMain.handle('generate-invite-code', async () => {
+  try {
+    logger.debug('Generating invite code');
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    const inviteCode = networkManager.generateInviteCode();
+    return { success: true, inviteCode };
+  } catch (error) {
+    logger.error('Failed to generate invite code:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('redeem-invite-code', async (event, code) => {
+  try {
+    logger.debug('Redeeming invite code', { code });
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    const invite = await networkManager.redeemInviteCode(code);
+    return { success: true, invite };
+  } catch (error) {
+    logger.error('Failed to redeem invite code:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-pending-invites', async () => {
+  try {
+    logger.debug('Getting pending invites');
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    const invites = networkManager.getPendingInvites();
+    return { success: true, invites };
+  } catch (error) {
+    logger.error('Failed to get pending invites:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('accept-invite', async (event, inviteId) => {
+  try {
+    logger.debug('Accepting invite', { inviteId });
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    const invite = await networkManager.acceptInvite(inviteId);
+    return { success: true, invite };
+  } catch (error) {
+    logger.error('Failed to accept invite:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('decline-invite', async (event, inviteId) => {
+  try {
+    logger.debug('Declining invite', { inviteId });
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    const invite = await networkManager.declineInvite(inviteId);
+    return { success: true, invite };
+  } catch (error) {
+    logger.error('Failed to decline invite:', error);
     return { success: false, error: error.message };
   }
 });

@@ -21,11 +21,23 @@ class NetworkManager extends EventEmitter {
     this.server = null;
     this.isInitialized = false;
     this.profilesDir = path.join(os.homedir(), '.multimc-hub', 'profiles');
-    this.ensureProfilesDirectory();
+    this.contactsDir = path.join(os.homedir(), '.multimc-hub', 'contacts');
+    this.invitesDir = path.join(os.homedir(), '.multimc-hub', 'invites');
+    this.ensureDirectories();
+    
+    // Exclusive network settings
+    this.exclusiveMode = true; // Only show approved contacts
+    this.requireInvite = true; // Require invitation to join network
+    this.autoAcceptInvites = false; // Don't auto-accept invites
+    this.contactList = new Map(); // Approved contacts
+    this.pendingInvites = new Map(); // Pending invitations
+    this.blockedPeers = new Set(); // Blocked peers
   }
 
-  ensureProfilesDirectory() {
+  ensureDirectories() {
     fs.ensureDirSync(this.profilesDir);
+    fs.ensureDirSync(this.contactsDir);
+    fs.ensureDirSync(this.invitesDir);
   }
 
   async findAvailablePort(startPort) {
@@ -50,6 +62,10 @@ class NetworkManager extends EventEmitter {
 
   async initialize() {
     try {
+      // Load contacts and invites
+      await this.loadContacts();
+      await this.loadInvites();
+      
       // Find available ports
       this.discoveryPort = await this.findAvailablePort(this.discoveryPort);
       this.communicationPort = await this.findAvailablePort(this.communicationPort);
@@ -62,12 +78,12 @@ class NetworkManager extends EventEmitter {
       await this.startWebServer();
       this.isInitialized = true;
       
-      // Start periodic discovery broadcast
+      // Start periodic discovery broadcast (only to contacts)
       setInterval(() => {
         this.broadcastDiscovery();
       }, 5000);
 
-      console.log('NetworkManager initialized successfully');
+      console.log('NetworkManager initialized successfully in exclusive mode');
     } catch (error) {
       console.error('Failed to initialize NetworkManager:', error);
       throw error;
@@ -235,22 +251,31 @@ class NetworkManager extends EventEmitter {
       const message = JSON.parse(msg.toString());
       
       if (message.type === 'discovery' && message.peerId !== this.localPeerId) {
-        // Found a new peer
-        const peerInfo = {
-          id: message.peerId,
-          name: message.name,
-          displayName: message.displayName,
-          address: rinfo.address,
-          discoveryPort: message.discoveryPort,
-          communicationPort: message.communicationPort,
-          platform: message.platform,
-          lastSeen: Date.now()
-        };
-
-        this.addPeer(message.peerId, peerInfo);
+        const sourceId = message.peerId;
         
-        // Respond with our own discovery message
-        this.sendDiscoveryResponse(rinfo);
+        // Only respond to contacts or if we're not in exclusive mode
+        if (!this.exclusiveMode || this.isContact(sourceId)) {
+          console.log(`Discovery from contact ${sourceId} at ${rinfo.address}:${rinfo.port}`);
+          
+          // Found a new peer
+          const peerInfo = {
+            id: message.peerId,
+            name: message.name,
+            displayName: message.displayName,
+            address: rinfo.address,
+            discoveryPort: message.discoveryPort,
+            communicationPort: message.communicationPort,
+            platform: message.platform,
+            lastSeen: Date.now()
+          };
+
+          this.addPeer(message.peerId, peerInfo);
+          
+          // Respond with our own discovery message
+          this.sendDiscoveryResponse(rinfo);
+        } else {
+          console.log(`Ignoring discovery from unknown peer ${sourceId} (exclusive mode)`);
+        }
       }
     } catch (error) {
       console.error('Error handling discovery message:', error);
@@ -414,16 +439,21 @@ class NetworkManager extends EventEmitter {
 
   addPeer(peerId, peerInfo) {
     if (peerId !== this.localPeerId) {
-      const existingPeer = this.peers.get(peerId);
-      if (!existingPeer) {
-        this.peers.set(peerId, peerInfo);
-        this.emit('peer-joined', peerId, peerInfo);
-        console.log(`Peer joined: ${peerInfo.displayName || peerInfo.name} (${peerId})`);
+      // Only add peers who are contacts or if we're not in exclusive mode
+      if (!this.exclusiveMode || this.isContact(peerId)) {
+        const existingPeer = this.peers.get(peerId);
+        if (!existingPeer) {
+          this.peers.set(peerId, peerInfo);
+          this.emit('peer-joined', peerId, peerInfo);
+          console.log(`Contact joined: ${peerInfo.displayName || peerInfo.name} (${peerId})`);
+        } else {
+          // Update existing peer info
+          existingPeer.lastSeen = Date.now();
+          existingPeer.address = peerInfo.address;
+          existingPeer.displayName = peerInfo.displayName;
+        }
       } else {
-        // Update existing peer info
-        existingPeer.lastSeen = Date.now();
-        existingPeer.address = peerInfo.address;
-        existingPeer.displayName = peerInfo.displayName;
+        console.log(`Ignoring unknown peer ${peerId} (exclusive mode)`);
       }
     }
   }
@@ -547,6 +577,212 @@ class NetworkManager extends EventEmitter {
     };
     await this.saveProfile(defaultProfile);
     return defaultProfile;
+  }
+
+  // Contact Management Methods
+  async loadContacts() {
+    try {
+      const contactsPath = path.join(this.contactsDir, 'contacts.json');
+      if (await fs.pathExists(contactsPath)) {
+        const contacts = await fs.readJson(contactsPath);
+        this.contactList = new Map(Object.entries(contacts));
+      }
+    } catch (error) {
+      console.error('Failed to load contacts:', error);
+      this.contactList = new Map();
+    }
+  }
+
+  async saveContacts() {
+    try {
+      const contactsPath = path.join(this.contactsDir, 'contacts.json');
+      const contacts = Object.fromEntries(this.contactList);
+      await fs.writeJson(contactsPath, contacts);
+    } catch (error) {
+      console.error('Failed to save contacts:', error);
+    }
+  }
+
+  async addContact(peerId, contactInfo) {
+    const contact = {
+      id: peerId,
+      name: contactInfo.name || 'Unknown',
+      username: contactInfo.username || peerId,
+      addedAt: new Date().toISOString(),
+      lastSeen: new Date().toISOString(),
+      status: 'online',
+      ...contactInfo
+    };
+    
+    this.contactList.set(peerId, contact);
+    await this.saveContacts();
+    this.emit('contact-added', contact);
+    return contact;
+  }
+
+  async removeContact(peerId) {
+    const contact = this.contactList.get(peerId);
+    if (contact) {
+      this.contactList.delete(peerId);
+      await this.saveContacts();
+      this.emit('contact-removed', contact);
+      return contact;
+    }
+    return null;
+  }
+
+  async blockPeer(peerId) {
+    this.blockedPeers.add(peerId);
+    await this.removeContact(peerId);
+    this.emit('peer-blocked', peerId);
+  }
+
+  async unblockPeer(peerId) {
+    this.blockedPeers.delete(peerId);
+    this.emit('peer-unblocked', peerId);
+  }
+
+  isContact(peerId) {
+    return this.contactList.has(peerId);
+  }
+
+  isBlocked(peerId) {
+    return this.blockedPeers.has(peerId);
+  }
+
+  getContacts() {
+    return Array.from(this.contactList.values());
+  }
+
+  // Invitation Management
+  async createInvite(peerId, inviteData = {}) {
+    const invite = {
+      id: crypto.randomUUID(),
+      fromPeerId: this.localPeerId,
+      toPeerId: peerId,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+      status: 'pending',
+      message: inviteData.message || 'You have been invited to join my MultiMC Hub network!',
+      ...inviteData
+    };
+
+    this.pendingInvites.set(invite.id, invite);
+    await this.saveInvites();
+    this.emit('invite-created', invite);
+    return invite;
+  }
+
+  async acceptInvite(inviteId) {
+    const invite = this.pendingInvites.get(inviteId);
+    if (!invite) {
+      throw new Error('Invite not found');
+    }
+
+    if (invite.status !== 'pending') {
+      throw new Error('Invite already processed');
+    }
+
+    if (new Date() > new Date(invite.expiresAt)) {
+      throw new Error('Invite has expired');
+    }
+
+    // Add to contacts
+    await this.addContact(invite.fromPeerId, {
+      name: invite.fromName || 'Unknown',
+      username: invite.fromUsername || invite.fromPeerId
+    });
+
+    // Update invite status
+    invite.status = 'accepted';
+    invite.acceptedAt = new Date().toISOString();
+    await this.saveInvites();
+
+    this.emit('invite-accepted', invite);
+    return invite;
+  }
+
+  async declineInvite(inviteId) {
+    const invite = this.pendingInvites.get(inviteId);
+    if (!invite) {
+      throw new Error('Invite not found');
+    }
+
+    invite.status = 'declined';
+    invite.declinedAt = new Date().toISOString();
+    await this.saveInvites();
+
+    this.emit('invite-declined', invite);
+    return invite;
+  }
+
+  async loadInvites() {
+    try {
+      const invitesPath = path.join(this.invitesDir, 'invites.json');
+      if (await fs.pathExists(invitesPath)) {
+        const invites = await fs.readJson(invitesPath);
+        this.pendingInvites = new Map(Object.entries(invites));
+      }
+    } catch (error) {
+      console.error('Failed to load invites:', error);
+      this.pendingInvites = new Map();
+    }
+  }
+
+  async saveInvites() {
+    try {
+      const invitesPath = path.join(this.invitesDir, 'invites.json');
+      const invites = Object.fromEntries(this.pendingInvites);
+      await fs.writeJson(invitesPath, invites);
+    } catch (error) {
+      console.error('Failed to save invites:', error);
+    }
+  }
+
+  getPendingInvites() {
+    return Array.from(this.pendingInvites.values()).filter(invite => invite.status === 'pending');
+  }
+
+  // Generate invite code for sharing
+  generateInviteCode() {
+    const inviteCode = crypto.randomBytes(16).toString('hex').toUpperCase();
+    const inviteData = {
+      code: inviteCode,
+      peerId: this.localPeerId,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+    };
+    
+    const invitePath = path.join(this.invitesDir, `${inviteCode}.json`);
+    fs.writeJsonSync(invitePath, inviteData);
+    
+    return inviteCode;
+  }
+
+  async redeemInviteCode(code) {
+    const invitePath = path.join(this.invitesDir, `${code.toUpperCase()}.json`);
+    
+    if (!await fs.pathExists(invitePath)) {
+      throw new Error('Invalid invite code');
+    }
+
+    const inviteData = await fs.readJson(invitePath);
+    
+    if (new Date() > new Date(inviteData.expiresAt)) {
+      await fs.remove(invitePath);
+      throw new Error('Invite code has expired');
+    }
+
+    // Create invitation
+    const invite = await this.createInvite(inviteData.peerId, {
+      fromPeerId: inviteData.peerId,
+      inviteCode: code
+    });
+
+    // Clean up the code file
+    await fs.remove(invitePath);
+    
+    return invite;
   }
 }
 

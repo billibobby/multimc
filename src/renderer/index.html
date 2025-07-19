@@ -186,10 +186,18 @@
                 <div id="network" class="tab-content">
                     <div class="network-container">
                         <div class="network-header">
-                            <h2>Network & Peers</h2>
-                            <button class="btn btn-secondary" onclick="refreshNetworkStatus()">
-                                <i class="fas fa-sync"></i> Refresh
-                            </button>
+                            <h2>Exclusive Network</h2>
+                            <div class="network-actions">
+                                <button class="btn btn-success" onclick="showInviteManager()">
+                                    <i class="fas fa-user-plus"></i> Invites
+                                </button>
+                                <button class="btn btn-primary" onclick="showContactManager()">
+                                    <i class="fas fa-address-book"></i> Contacts
+                                </button>
+                                <button class="btn btn-secondary" onclick="refreshNetworkStatus()">
+                                    <i class="fas fa-sync"></i> Refresh
+                                </button>
+                            </div>
                         </div>
                         
                         <div class="network-info-grid">
@@ -204,10 +212,32 @@
                             
                             <div class="card">
                                 <div class="card-header">
-                                    <h3>Connected Peers</h3>
+                                    <h3>Online Contacts</h3>
                                 </div>
                                 <div class="card-content" id="connected-peers">
                                     <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Network Security</h3>
+                                </div>
+                                <div class="card-content">
+                                    <div class="security-info">
+                                        <div class="security-item">
+                                            <i class="fas fa-shield-alt"></i>
+                                            <span>Exclusive Mode: Only approved contacts can see you</span>
+                                        </div>
+                                        <div class="security-item">
+                                            <i class="fas fa-user-check"></i>
+                                            <span>Invite-Only: New users must be invited to join</span>
+                                        </div>
+                                        <div class="security-item">
+                                            <i class="fas fa-eye-slash"></i>
+                                            <span>Private: Unknown users cannot discover your network</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -873,6 +903,109 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeModal('service-account-modal')">Cancel</button>
                 <button class="btn btn-primary" onclick="setupServiceAccount()">Setup Account</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Manager Modal -->
+    <div id="contact-manager-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-address-book"></i> Contact Manager</h3>
+                <button class="modal-close" onclick="closeModal('contact-manager-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="contact-tabs">
+                    <button class="tab-btn active" onclick="switchContactTab('contacts')">My Contacts</button>
+                    <button class="tab-btn" onclick="switchContactTab('add')">Add Contact</button>
+                </div>
+                
+                <div id="contacts-tab" class="contact-tab-content">
+                    <div class="contacts-list" id="contacts-list">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+                
+                <div id="add-contact-tab" class="contact-tab-content" style="display: none;">
+                    <div class="add-contact-form">
+                        <div class="form-group">
+                            <label for="contact-peer-id">Peer ID</label>
+                            <input type="text" id="contact-peer-id" placeholder="Enter peer ID">
+                        </div>
+                        <div class="form-group">
+                            <label for="contact-name">Display Name</label>
+                            <input type="text" id="contact-name" placeholder="Enter display name">
+                        </div>
+                        <div class="form-group">
+                            <label for="contact-username">Username</label>
+                            <input type="text" id="contact-username" placeholder="Enter username">
+                        </div>
+                        <button class="btn btn-primary" onclick="addContact()">
+                            <i class="fas fa-plus"></i> Add Contact
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invite Manager Modal -->
+    <div id="invite-manager-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-plus"></i> Invite Manager</h3>
+                <button class="modal-close" onclick="closeModal('invite-manager-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="invite-tabs">
+                    <button class="tab-btn active" onclick="switchInviteTab('generate')">Generate Invite</button>
+                    <button class="tab-btn" onclick="switchInviteTab('redeem')">Redeem Invite</button>
+                    <button class="tab-btn" onclick="switchInviteTab('pending')">Pending Invites</button>
+                </div>
+                
+                <div id="generate-invite-tab" class="invite-tab-content">
+                    <div class="generate-invite-section">
+                        <h4>Generate Invite Code</h4>
+                        <p>Create an invite code to share with friends. They can use this code to join your exclusive network.</p>
+                        <button class="btn btn-primary" onclick="generateInviteCode()">
+                            <i class="fas fa-magic"></i> Generate New Invite Code
+                        </button>
+                        <div id="generated-invite" class="generated-invite" style="display: none;">
+                            <h5>Your Invite Code:</h5>
+                            <div class="invite-code" id="invite-code-display"></div>
+                            <button class="btn btn-secondary" onclick="copyInviteCode()">
+                                <i class="fas fa-copy"></i> Copy Code
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="redeem-invite-tab" class="invite-tab-content" style="display: none;">
+                    <div class="redeem-invite-section">
+                        <h4>Redeem Invite Code</h4>
+                        <p>Enter an invite code from a friend to join their exclusive network.</p>
+                        <div class="form-group">
+                            <label for="invite-code-input">Invite Code</label>
+                            <input type="text" id="invite-code-input" placeholder="Enter invite code">
+                        </div>
+                        <button class="btn btn-primary" onclick="redeemInviteCode()">
+                            <i class="fas fa-check"></i> Redeem Code
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="pending-invites-tab" class="invite-tab-content" style="display: none;">
+                    <div class="pending-invites-section">
+                        <h4>Pending Invites</h4>
+                        <div id="pending-invites-list" class="pending-invites-list">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

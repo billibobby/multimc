@@ -1891,6 +1891,200 @@ body {
     display: block;
 }
 
+/* Network Security Styles */
+.security-info {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.security-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: rgba(76, 175, 80, 0.1);
+    border-radius: 8px;
+    border-left: 4px solid #4caf50;
+}
+
+.security-item i {
+    color: #4caf50;
+    font-size: 16px;
+}
+
+/* Contact Manager Styles */
+.contact-tabs, .invite-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tab-btn.active {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.contact-tab-content, .invite-tab-content {
+    min-height: 200px;
+}
+
+.contacts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.contact-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.contact-name {
+    font-weight: 600;
+    color: white;
+}
+
+.contact-username {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.contact-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+}
+
+.contact-status.online {
+    color: #4caf50;
+}
+
+.contact-status.offline {
+    color: #f44336;
+}
+
+.contact-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.contact-actions button {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.add-contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Invite Manager Styles */
+.generate-invite-section, .redeem-invite-section, .pending-invites-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.generated-invite {
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid #4caf50;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+
+.invite-code {
+    font-family: 'Courier New', monospace;
+    font-size: 24px;
+    font-weight: bold;
+    color: #4caf50;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+    letter-spacing: 2px;
+}
+
+.pending-invites-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.invite-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.invite-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.invite-from {
+    font-weight: 600;
+    color: white;
+}
+
+.invite-message {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.invite-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.invite-actions button {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+/* Network Actions */
+.network-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
 .service-limits {
     display: grid;
     grid-template-columns: 1fr 1fr;

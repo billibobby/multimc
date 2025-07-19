@@ -3255,3 +3255,293 @@ async function updateModdedOptions() {
         moddedOptions.style.display = 'none';
     }
 }
+
+// Contact Management Functions
+function showContactManager() {
+    document.getElementById('contact-manager-modal').style.display = 'block';
+    loadContacts();
+}
+
+function closeContactManager() {
+    document.getElementById('contact-manager-modal').style.display = 'none';
+}
+
+function switchContactTab(tab) {
+    // Hide all tab contents
+    document.querySelectorAll('.contact-tab-content').forEach(content => {
+        content.style.display = 'none';
+    });
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.contact-tabs .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    document.getElementById(`${tab}-contact-tab`).style.display = 'block';
+    
+    // Add active class to selected tab
+    event.target.classList.add('active');
+}
+
+async function loadContacts() {
+    try {
+        const result = await ipcRenderer.invoke('get-contacts');
+        if (result.success) {
+            displayContacts(result.contacts);
+        } else {
+            showNotification('Failed to load contacts', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading contacts:', error);
+        showNotification('Failed to load contacts', 'error');
+    }
+}
+
+function displayContacts(contacts) {
+    const contactsList = document.getElementById('contacts-list');
+    
+    if (contacts.length === 0) {
+        contactsList.innerHTML = '<p class="no-contacts">No contacts found. Add contacts to start building your exclusive network.</p>';
+        return;
+    }
+    
+    const contactsHtml = contacts.map(contact => `
+        <div class="contact-item">
+            <div class="contact-info">
+                <div class="contact-name">${contact.name}</div>
+                <div class="contact-username">@${contact.username}</div>
+                <div class="contact-status ${contact.status}">
+                    <i class="fas fa-circle"></i>
+                    ${contact.status}
+                </div>
+            </div>
+            <div class="contact-actions">
+                <button class="btn btn-sm btn-danger" onclick="removeContact('${contact.id}')">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+                <button class="btn btn-sm btn-warning" onclick="blockPeer('${contact.id}')">
+                    <i class="fas fa-ban"></i> Block
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    contactsList.innerHTML = contactsHtml;
+}
+
+async function addContact() {
+    const peerId = document.getElementById('contact-peer-id').value.trim();
+    const name = document.getElementById('contact-name').value.trim();
+    const username = document.getElementById('contact-username').value.trim();
+    
+    if (!peerId || !name) {
+        showNotification('Please fill in all required fields', 'warning');
+        return;
+    }
+    
+    try {
+        const result = await ipcRenderer.invoke('add-contact', peerId, { name, username });
+        if (result.success) {
+            showNotification('Contact added successfully', 'success');
+            loadContacts();
+            // Clear form
+            document.getElementById('contact-peer-id').value = '';
+            document.getElementById('contact-name').value = '';
+            document.getElementById('contact-username').value = '';
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error adding contact:', error);
+        showNotification('Failed to add contact', 'error');
+    }
+}
+
+async function removeContact(peerId) {
+    if (!confirm('Are you sure you want to remove this contact?')) {
+        return;
+    }
+    
+    try {
+        const result = await ipcRenderer.invoke('remove-contact', peerId);
+        if (result.success) {
+            showNotification('Contact removed successfully', 'success');
+            loadContacts();
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error removing contact:', error);
+        showNotification('Failed to remove contact', 'error');
+    }
+}
+
+async function blockPeer(peerId) {
+    if (!confirm('Are you sure you want to block this peer? They will no longer be able to see you.')) {
+        return;
+    }
+    
+    try {
+        const result = await ipcRenderer.invoke('block-peer', peerId);
+        if (result.success) {
+            showNotification('Peer blocked successfully', 'success');
+            loadContacts();
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error blocking peer:', error);
+        showNotification('Failed to block peer', 'error');
+    }
+}
+
+// Invite Management Functions
+function showInviteManager() {
+    document.getElementById('invite-manager-modal').style.display = 'block';
+    loadPendingInvites();
+}
+
+function closeInviteManager() {
+    document.getElementById('invite-manager-modal').style.display = 'none';
+}
+
+function switchInviteTab(tab) {
+    // Hide all tab contents
+    document.querySelectorAll('.invite-tab-content').forEach(content => {
+        content.style.display = 'none';
+    });
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.invite-tabs .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    document.getElementById(`${tab}-invite-tab`).style.display = 'block';
+    
+    // Add active class to selected tab
+    event.target.classList.add('active');
+}
+
+async function generateInviteCode() {
+    try {
+        const result = await ipcRenderer.invoke('generate-invite-code');
+        if (result.success) {
+            document.getElementById('invite-code-display').textContent = result.inviteCode;
+            document.getElementById('generated-invite').style.display = 'block';
+            showNotification('Invite code generated successfully', 'success');
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error generating invite code:', error);
+        showNotification('Failed to generate invite code', 'error');
+    }
+}
+
+function copyInviteCode() {
+    const inviteCode = document.getElementById('invite-code-display').textContent;
+    navigator.clipboard.writeText(inviteCode).then(() => {
+        showNotification('Invite code copied to clipboard', 'success');
+    }).catch(() => {
+        showNotification('Failed to copy invite code', 'error');
+    });
+}
+
+async function redeemInviteCode() {
+    const code = document.getElementById('invite-code-input').value.trim();
+    
+    if (!code) {
+        showNotification('Please enter an invite code', 'warning');
+        return;
+    }
+    
+    try {
+        const result = await ipcRenderer.invoke('redeem-invite-code', code);
+        if (result.success) {
+            showNotification('Invite code redeemed successfully', 'success');
+            document.getElementById('invite-code-input').value = '';
+            loadPendingInvites();
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error redeeming invite code:', error);
+        showNotification('Failed to redeem invite code', 'error');
+    }
+}
+
+async function loadPendingInvites() {
+    try {
+        const result = await ipcRenderer.invoke('get-pending-invites');
+        if (result.success) {
+            displayPendingInvites(result.invites);
+        } else {
+            showNotification('Failed to load pending invites', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading pending invites:', error);
+        showNotification('Failed to load pending invites', 'error');
+    }
+}
+
+function displayPendingInvites(invites) {
+    const invitesList = document.getElementById('pending-invites-list');
+    
+    if (invites.length === 0) {
+        invitesList.innerHTML = '<p class="no-invites">No pending invites found.</p>';
+        return;
+    }
+    
+    const invitesHtml = invites.map(invite => `
+        <div class="invite-item">
+            <div class="invite-info">
+                <div class="invite-from">From: ${invite.fromName || invite.fromPeerId}</div>
+                <div class="invite-message">${invite.message}</div>
+                <div class="invite-date">Received: ${new Date(invite.createdAt).toLocaleDateString()}</div>
+            </div>
+            <div class="invite-actions">
+                <button class="btn btn-sm btn-success" onclick="acceptInvite('${invite.id}')">
+                    <i class="fas fa-check"></i> Accept
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="declineInvite('${invite.id}')">
+                    <i class="fas fa-times"></i> Decline
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    invitesList.innerHTML = invitesHtml;
+}
+
+async function acceptInvite(inviteId) {
+    try {
+        const result = await ipcRenderer.invoke('accept-invite', inviteId);
+        if (result.success) {
+            showNotification('Invite accepted successfully', 'success');
+            loadPendingInvites();
+            loadContacts();
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error accepting invite:', error);
+        showNotification('Failed to accept invite', 'error');
+    }
+}
+
+async function declineInvite(inviteId) {
+    try {
+        const result = await ipcRenderer.invoke('decline-invite', inviteId);
+        if (result.success) {
+            showNotification('Invite declined', 'info');
+            loadPendingInvites();
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error declining invite:', error);
+        showNotification('Failed to decline invite', 'error');
+    }
+}
