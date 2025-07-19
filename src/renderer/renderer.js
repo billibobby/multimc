@@ -804,9 +804,10 @@ async function refreshDownloads() {
 async function refreshEntireApp() {
     console.log('=== REFRESHING ENTIRE APPLICATION ===');
     console.log('refreshEntireApp function called!');
+    alert('Refresh function called!'); // Temporary alert for testing
     
     // Show visual refresh indicator on the top-right refresh button
-    const refreshButton = document.querySelector('.header-right .btn[onclick="refreshEntireApp()"]');
+    const refreshButton = document.querySelector('.header-right .btn');
     console.log('Found refresh button:', refreshButton);
     let originalText = '';
     if (refreshButton) {

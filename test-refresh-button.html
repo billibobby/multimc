@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Refresh Button Test</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #1e3c72;
+            color: white;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-sm {
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        
+        @keyframes refreshSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .refresh-spinning {
+            animation: refreshSpin 1s linear infinite;
+        }
+        
+        .test-results {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Refresh Button Test</h1>
+    
+    <div class="header-right">
+        <button class="btn btn-secondary btn-sm" onclick="testRefresh()" title="Refresh all data">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+        <div class="user-info">
+            <span>Mac.lan</span>
+            <div class="user-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-results">
+        <h3>Test Results:</h3>
+        <div id="results"></div>
+    </div>
+    
+    <script>
+        function testRefresh() {
+            const results = document.getElementById('results');
+            const button = document.querySelector('.btn[onclick="testRefresh()"]');
+            
+            results.innerHTML = '<p>✅ Function called successfully!</p>';
+            
+            // Test button detection
+            if (button) {
+                results.innerHTML += '<p>✅ Button found successfully</p>';
+                
+                // Test spinning animation
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i>';
+                button.disabled = true;
+                button.title = 'Refreshing...';
+                
+                results.innerHTML += '<p>✅ Button updated with spinning icon</p>';
+                
+                // Restore after 3 seconds
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                    button.title = 'Refresh all data';
+                    results.innerHTML += '<p>✅ Button restored to original state</p>';
+                }, 3000);
+                
+            } else {
+                results.innerHTML += '<p>❌ Button not found!</p>';
+            }
+        }
+    </script>
+</body>
+</html> 
