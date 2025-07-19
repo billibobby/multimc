@@ -205,6 +205,15 @@ function setupEventListeners() {
             await populateVersionDropdown();
         });
     }
+    
+    // Add event listener for refresh button
+    const refreshButton = document.getElementById('refresh-button');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', () => {
+            console.log('Refresh button clicked via event listener');
+            refreshEntireApp();
+        });
+    }
 }
 
 async function loadInitialData() {
