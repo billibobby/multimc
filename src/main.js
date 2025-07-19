@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
+const { autoUpdater } = require('electron-updater');
 const { ServerManager } = require('./server/ServerManager');
 const { NetworkManager } = require('./network/NetworkManager');
 const { SystemChecker } = require('./utils/SystemChecker');
@@ -9,6 +10,10 @@ let mainWindow;
 let serverManager;
 let networkManager;
 let systemChecker;
+
+// Auto-updater configuration
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
 
 function createWindow() {
   logger.info('Creating main window');
@@ -34,6 +39,11 @@ function createWindow() {
     logger.info('Main window ready to show');
     mainWindow.show();
     initializeManagers();
+    
+    // Check for updates after a short delay
+    setTimeout(() => {
+      checkForUpdates();
+    }, 3000);
   });
 
   mainWindow.on('closed', () => {
@@ -43,6 +53,73 @@ function createWindow() {
 
   mainWindow.on('error', (error) => {
     logger.error('Main window error:', error);
+  });
+}
+
+// Auto-updater functions
+function checkForUpdates() {
+  logger.info('Checking for updates...');
+  autoUpdater.checkForUpdates();
+}
+
+function setupAutoUpdater() {
+  autoUpdater.on('checking-for-update', () => {
+    logger.info('Checking for update...');
+    mainWindow.webContents.send('update-status', { status: 'checking' });
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    logger.info('Update available:', info);
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Available',
+      message: 'A new version of MultiMC Hub is available!',
+      detail: `Version ${info.version} is ready to download.`,
+      buttons: ['Download Now', 'Later'],
+      defaultId: 0
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.downloadUpdate();
+        mainWindow.webContents.send('update-status', { 
+          status: 'downloading',
+          version: info.version 
+        });
+      }
+    });
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    logger.info('Update not available');
+    mainWindow.webContents.send('update-status', { status: 'up-to-date' });
+  });
+
+  autoUpdater.on('error', (err) => {
+    logger.error('Auto-updater error:', err);
+    mainWindow.webContents.send('update-status', { 
+      status: 'error',
+      error: err.message 
+    });
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    logger.info('Download progress:', progressObj);
+    mainWindow.webContents.send('update-progress', progressObj);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    logger.info('Update downloaded:', info);
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Ready',
+      message: 'Update downloaded successfully!',
+      detail: 'The application will restart to install the update.',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 0
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
   });
 }
 
@@ -195,6 +272,12 @@ ipcMain.handle('download-forge', async (event, version) => {
   }
 });
 
+ipcMain.handle('check-for-updates', () => {
+  logger.info('Manual update check requested');
+  checkForUpdates();
+  return { success: true };
+});
+
 ipcMain.handle('get-logs', async (event, lines = 100) => {
   try {
     logger.debug('Getting recent logs', { lines });
@@ -257,40 +340,36 @@ ipcMain.on('profile-updated', (event, data) => {
   mainWindow.webContents.send('profile-updated', data);
 });
 
+// App event handlers
 app.whenReady().then(() => {
-  logger.info('Electron app ready');
+  setupAutoUpdater();
   createWindow();
+  
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
 });
 
-app.on('window-all-closed', () => {
-  logger.info('All windows closed');
+app.on('window-all-closed', async () => {
+  logger.info('All windows closed, cleaning up...');
+  
+  if (serverManager) {
+    await serverManager.cleanup();
+  }
+  
+  if (networkManager) {
+    await networkManager.cleanup();
+  }
+  
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
-app.on('activate', () => {
-  logger.info('App activated');
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
-});
-
 app.on('before-quit', async () => {
-  logger.info('App quitting, cleaning up...');
-  if (serverManager) {
-    logger.server('Cleaning up ServerManager');
-    await serverManager.cleanup();
-  }
-  if (networkManager) {
-    logger.network('Cleaning up NetworkManager');
-    await networkManager.cleanup();
-  }
-  logger.shutdown();
-});
-
-app.on('error', (error) => {
-  logger.error('App error:', error);
+  logger.info('Application quitting...');
 });
 
 process.on('uncaughtException', (error) => {
@@ -298,5 +377,5 @@ process.on('uncaughtException', (error) => {
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled rejection:', { reason, promise });
+  logger.error('Unhandled rejection at:', promise, 'reason:', reason);
 }); 

@@ -1,256 +1,192 @@
 # MultiMC Hub 🎮
 
-A powerful desktop application for multi-hosting Minecraft servers with live updates and seamless host transfer between friends. Perfect for gaming groups who want to share server hosting responsibilities!
+**A user-friendly Minecraft server management hub for hosting and transferring servers between friends**
+
+MultiMC Hub makes it easy to host, manage, and transfer Minecraft servers without any technical knowledge. Perfect for friends who want to play together!
 
 ## ✨ Features
 
-### 🚀 **Multi-Hosting Capabilities**
-- **Easy Host Transfer**: Transfer server hosting between friends with one click
-- **Host Takeover**: Take over hosting from another friend when they go offline
-- **Geographic Flexibility**: Host from anywhere - North Carolina to California and beyond!
-- **Real-time Updates**: Live status updates and notifications
+- **Easy Server Hosting**: Start Minecraft servers with just a few clicks
+- **Network Discovery**: Automatically find and connect to friends' servers
+- **Server Transfer**: Seamlessly transfer server hosting between friends
+- **Auto-Updates**: Automatically checks for and installs updates
+- **Cross-Platform**: Works on Windows, macOS, and Linux
+- **User-Friendly**: No terminal knowledge required!
 
-### 👥 **Friend Management**
-- **User Profiles**: Set your display name and see your friends' names
-- **Friend Detection**: Automatically detect other users on your network
-- **Platform Recognition**: See what platform your friends are using (Windows/Mac/Linux)
-- **Online Status**: Real-time online/offline status for all connected friends
+## 🚀 Quick Start
 
-### 🎯 **Server Management**
-- **Vanilla & Forge Support**: Run both vanilla Minecraft and Forge modded servers
-- **Version Management**: Download and manage multiple Minecraft server versions
-- **Automatic Setup**: One-click server creation with optimal settings
-- **Server Monitoring**: Real-time server status and player count
+### For Windows Users:
 
-### 🔧 **System Intelligence**
-- **Deep System Analysis**: Automatic detection of Java, disk space, and network
-- **Dependency Management**: Auto-download missing Minecraft and Forge versions
-- **Cross-Platform**: Works seamlessly on Windows, Mac, and Linux
-- **Smart Recommendations**: Get suggestions for optimal setup
+1. **Download** the MultiMC Hub files
+2. **Double-click** `install.bat` to run the installer
+3. **Follow** the installation wizard
+4. **Double-click** the "MultiMC Hub" shortcut on your desktop
+5. **Enjoy** your Minecraft server!
 
-### 🎨 **Modern Interface**
-- **Clean, Dark Theme**: Beautiful, modern UI that's easy on the eyes
-- **Responsive Design**: Works great on different screen sizes
-- **Intuitive Navigation**: Easy-to-use tabs and controls
-- **Real-time Updates**: Live status indicators and notifications
+### For macOS Users:
 
-## 🖥️ **Cross-Platform Support**
+1. **Download** the MultiMC Hub files
+2. **Double-click** `install.sh` to run the installer
+3. **Follow** the installation wizard
+4. **Double-click** the "MultiMC Hub" shortcut on your desktop
+5. **Enjoy** your Minecraft server!
 
-### Windows
-- **Easy Installation**: Run `start.bat` for automatic setup
-- **NSIS Installer**: Professional installation with desktop shortcuts
-- **Portable Version**: No installation required option
+### For Linux Users:
 
-### macOS
-- **Native App**: Full macOS integration
-- **DMG Package**: Easy drag-and-drop installation
-- **Apple Silicon**: Optimized for both Intel and Apple Silicon Macs
+1. **Download** the MultiMC Hub files
+2. **Open terminal** in the MultiMC Hub folder
+3. **Run**: `chmod +x install.sh && ./install.sh`
+4. **Follow** the installation wizard
+5. **Run**: `./start.sh`
+6. **Enjoy** your Minecraft server!
 
-### Linux
-- **AppImage**: Universal Linux package
-- **Deb Package**: Native Ubuntu/Debian support
-- **Shell Script**: Easy startup with `start.sh`
+## 📋 System Requirements
 
-## 🚀 **Quick Start**
+- **Operating System**: Windows 10+, macOS 10.14+, or Linux
+- **Memory**: 4GB RAM minimum (8GB recommended)
+- **Storage**: 2GB free space
+- **Internet**: Required for updates and multiplayer
 
-### Prerequisites
-- **Node.js 16+** - [Download here](https://nodejs.org/)
-- **Java 8+** - [Download here](https://adoptium.net/)
-- **Network Connection** - For peer discovery and updates
+## 🎯 How It Works
 
-### Installation
+### Starting a Server
 
-#### Windows
-```batch
-# Download and extract the application
-# Double-click start.bat to run
-start.bat
-```
+1. **Open** MultiMC Hub
+2. **Click** "Start New Server"
+3. **Choose** server type (Vanilla or Forge)
+4. **Select** Minecraft version
+5. **Set** server name and settings
+6. **Click** "Start Server"
 
-#### macOS
-```bash
-# Download the DMG file
-# Drag to Applications folder
-# Or use the shell script:
-chmod +x start.sh
-./start.sh
-```
+The application will automatically:
+- Download the required server files
+- Install Java if needed
+- Start your server
+- Show you the connection details
 
-#### Linux
-```bash
-# Make executable and run
-chmod +x start.sh
-./start.sh
-```
+### Connecting to Friends
 
-### First Time Setup
+1. **Open** MultiMC Hub
+2. **Go** to the Network tab
+3. **See** your friends' servers automatically
+4. **Click** on a server to join
 
-1. **Launch the Application**
-   - The app will automatically check your system
-   - Create your user profile with your name
+### Transferring Server Hosting
 
-2. **Set Your Profile**
-   - Click "Edit Profile" in the sidebar
-   - Enter your display name
-   - Your platform will be detected automatically
+1. **Right-click** on a server in the list
+2. **Select** "Transfer Host"
+3. **Choose** the new host
+4. **Server** transfers automatically
 
-3. **Download Dependencies**
-   - Go to the Downloads tab
-   - Download your preferred Minecraft version
-   - Forge versions coming soon!
+## 🔧 Advanced Features
 
-4. **Start Your First Server**
-   - Go to the Servers tab
-   - Click "Start New Server"
-   - Choose your settings and launch!
+### Auto-Updates
 
-## 👥 **Friend Connection**
+MultiMC Hub automatically checks for updates and notifies you when new versions are available. You can also manually check for updates in the Settings tab.
 
-### Automatic Discovery
-- Friends on the same network are automatically detected
-- See their names, platforms, and online status
-- No manual configuration required
+### Server Management
 
-### Host Transfer
-1. **Request Transfer**: Click "Transfer Host" on any server
-2. **Select Friend**: Choose who should take over
-3. **Automatic Handoff**: Server transfers seamlessly
+- **Start/Stop** servers with one click
+- **Monitor** server performance
+- **View** server logs
+- **Configure** server settings
 
-### Host Takeover
-1. **Detect Offline Host**: App shows when a friend goes offline
-2. **Take Over**: Click "Take Over Host" to continue the server
-3. **Seamless Transition**: Players can continue playing without interruption
+### Network Features
 
-## 🛠️ **Advanced Features**
+- **Automatic** peer discovery
+- **Real-time** status updates
+- **Secure** communication
+- **Profile** management
 
-### Server Configuration
-- **Custom Ports**: Set any port for your servers
-- **Player Limits**: Configure max players per server
-- **Memory Settings**: Optimize server performance
-- **World Management**: Import/export server worlds
-
-### Network Settings
-- **Discovery Port**: Customize peer discovery (default: 3001)
-- **Communication Port**: Customize messaging (default: 3002)
-- **Firewall Configuration**: Automatic port detection and setup
-
-### System Monitoring
-- **Resource Usage**: Monitor CPU, memory, and disk usage
-- **Network Status**: Real-time network connectivity
-- **Java Version**: Automatic Java detection and validation
-- **Disk Space**: Monitor available storage for servers
-
-## 📁 **File Structure**
-
-```
-multimc-hub/
-├── src/
-│   ├── main.js              # Main Electron process
-│   ├── server/
-│   │   └── ServerManager.js # Server lifecycle management
-│   ├── network/
-│   │   └── NetworkManager.js # Peer discovery and communication
-│   ├── utils/
-│   │   └── SystemChecker.js # System requirements checking
-│   └── renderer/
-│       ├── index.html       # Main UI
-│       ├── styles.css       # Styling
-│       └── renderer.js      # Frontend logic
-├── assets/
-│   └── icon.png            # Application icon
-├── start.sh               # Linux/macOS startup script
-├── start.bat              # Windows startup script
-└── package.json           # Project configuration
-```
-
-## 🔧 **Development**
-
-### Building from Source
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/multimc-hub.git
-cd multimc-hub
-
-# Install dependencies
-npm install
-
-# Start development mode
-npm run dev
-
-# Build for distribution
-npm run build
-
-# Build for specific platform
-npm run build:win    # Windows
-npm run build:mac    # macOS
-npm run build:linux  # Linux
-```
-
-### Architecture
-- **Electron**: Cross-platform desktop framework
-- **Node.js**: Backend server management
-- **Express**: Web API for profile management
-- **Socket.io**: Real-time communication
-- **UDP Discovery**: Peer-to-peer network discovery
-
-## 🐛 **Troubleshooting**
+## 🛠️ Troubleshooting
 
 ### Common Issues
 
-#### "Java not found"
-- Install Java 8 or higher from [Adoptium](https://adoptium.net/)
-- Ensure Java is in your system PATH
+**"Node.js is not installed"**
+- Run the installer again
+- Or manually install Node.js from https://nodejs.org/
 
-#### "No friends detected"
-- Check that all friends are on the same network
-- Ensure firewall allows ports 3001-3003
-- Verify all friends have the app running
+**"Java not found"**
+- MultiMC Hub will automatically download Java
+- Or install Java manually from https://adoptium.net/
 
-#### "Server won't start"
-- Check available disk space (minimum 2GB)
-- Verify Java installation
-- Check port availability (default 25565)
+**"Server won't start"**
+- Check that the port isn't already in use
+- Ensure you have enough RAM
+- Try a different Minecraft version
 
-#### "Can't transfer host"
-- Ensure both users are online
-- Check network connectivity
-- Verify server is running properly
+**"Can't connect to friends"**
+- Check your firewall settings
+- Ensure both users are on the same network
+- Try restarting the application
 
-### Logs and Debugging
-- Application logs: `~/.multimc-hub/logs/`
-- Server logs: `~/.multimc-hub/servers/[server-id]/logs/`
-- Network logs: Check browser console (F12)
+### Getting Help
 
-## 🤝 **Contributing**
+If you encounter any issues:
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+1. **Check** the logs in the Logs tab
+2. **Restart** the application
+3. **Run** the installer again
+4. **Contact** support with the error details
 
-### Development Setup
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+## 📁 File Structure
 
-## 📄 **License**
+```
+multimc/
+├── install.bat          # Windows installer
+├── install.sh           # macOS/Linux installer
+├── start.bat            # Windows launcher
+├── start.sh             # macOS/Linux launcher
+├── package.json         # Application configuration
+├── src/                 # Source code
+│   ├── main.js         # Main application
+│   ├── renderer/       # User interface
+│   ├── server/         # Server management
+│   ├── network/        # Network features
+│   └── utils/          # Utilities
+└── assets/             # Application assets
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 🔄 Updates
 
-## 🙏 **Acknowledgments**
+MultiMC Hub automatically checks for updates and will notify you when new versions are available. Updates include:
 
-- **Mojang**: For Minecraft server files
-- **Forge Team**: For modded server support
-- **Electron Team**: For the amazing desktop framework
-- **Our Community**: For feedback and testing
+- **Bug fixes** and improvements
+- **New features** and capabilities
+- **Security** updates
+- **Performance** enhancements
 
-## 📞 **Support**
+## 🤝 Contributing
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/multimc-hub/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/multimc-hub/discussions)
-- **Wiki**: [Documentation](https://github.com/yourusername/multimc-hub/wiki)
+Want to help improve MultiMC Hub?
+
+1. **Fork** the repository
+2. **Create** a feature branch
+3. **Make** your changes
+4. **Test** thoroughly
+5. **Submit** a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- **Mojang** for Minecraft
+- **Electron** team for the framework
+- **Node.js** community for the runtime
+- **All contributors** who help improve MultiMC Hub
+
+## 📞 Support
+
+Need help? Here's how to get support:
+
+- **GitHub Issues**: Report bugs and request features
+- **Discord**: Join our community server
+- **Email**: Contact us directly
 
 ---
 
 **Made with ❤️ for the Minecraft community**
 
-*MultiMC Hub - Where friends become server admins together!* 
+*MultiMC Hub - Making Minecraft server hosting easy for everyone!* 

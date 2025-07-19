@@ -1,24 +1,24 @@
 {
   "name": "multimc-hub",
   "version": "1.0.0",
-  "description": "Multi-Hosting Minecraft Server Hub - Easy server hosting and transfer between friends",
+  "description": "A multi-hosting Minecraft server hub with network discovery and management",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
     "build": "electron-builder",
-    "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux",
-    "dist": "electron-builder --publish=never",
+    "publish": "electron-builder --publish=always",
+    "dist": "electron-builder --dir",
     "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [
     "minecraft",
     "server",
     "multiplayer",
-    "hosting",
-    "forge",
+    "network",
     "electron",
     "desktop"
   ],
@@ -29,13 +29,10 @@
     "electron-builder": "^24.6.4"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.2",
-    "minecraft-server-util": "^5.4.0",
-    "fs-extra": "^11.1.1",
     "archiver": "^6.0.1",
     "extract-zip": "^2.0.1",
-    "node-fetch": "^3.3.2"
+    "fs-extra": "^11.1.1",
+    "electron-updater": "^6.1.7"
   },
   "build": {
     "appId": "com.multimc.hub",
@@ -49,52 +46,43 @@
       "package.json",
       "node_modules/**/*"
     ],
-    "mac": {
-      "category": "public.app-category.games",
-      "icon": "assets/icon.icns",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": ["x64", "arm64"]
-        },
-        {
-          "target": "zip",
-          "arch": ["x64", "arm64"]
-        }
-      ]
-    },
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
     "win": {
-      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "nsis",
           "arch": ["x64"]
-        },
-        {
-          "target": "portable",
-          "arch": ["x64"]
-        }
-      ]
-    },
-    "linux": {
-      "icon": "assets/icon.png",
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": ["x64"]
-        },
-        {
-          "target": "deb",
-          "arch": ["x64"]
         }
       ],
+      "icon": "assets/icon.ico",
+      "publisherName": "MultiMC Hub"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.games"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png",
       "category": "Game"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "shortcutName": "MultiMC Hub"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "billibobby",
+      "repo": "multimc"
     }
   },
   "engines": {

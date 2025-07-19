@@ -73,6 +73,15 @@ function setupEventListeners() {
         showNotification(message, 'error');
     });
     
+    // Auto-update event listeners
+    ipcRenderer.on('update-status', (event, data) => {
+        handleUpdateStatus(data);
+    });
+    
+    ipcRenderer.on('update-progress', (event, progress) => {
+        handleUpdateProgress(progress);
+    });
+    
     // Add event listener for server type change
     document.addEventListener('DOMContentLoaded', () => {
         const typeSelect = document.getElementById('server-type');
@@ -984,6 +993,38 @@ function handleProfileUpdate(data) {
             peer.displayName = data.profile.displayName;
             loadNetworkData(); // Refresh the network display
         }
+    }
+}
+
+// Update handling functions
+function handleUpdateStatus(data) {
+    switch (data.status) {
+        case 'checking':
+            showNotification('Checking for updates...', 'info');
+            break;
+        case 'up-to-date':
+            showNotification('MultiMC Hub is up to date!', 'success');
+            break;
+        case 'downloading':
+            showNotification(`Downloading update ${data.version}...`, 'info');
+            break;
+        case 'error':
+            showNotification(`Update error: ${data.error}`, 'error');
+            break;
+    }
+}
+
+function handleUpdateProgress(progress) {
+    const percent = Math.round(progress.percent);
+    showNotification(`Downloading update: ${percent}%`, 'info');
+}
+
+async function checkForUpdates() {
+    try {
+        await ipcRenderer.invoke('check-for-updates');
+        showNotification('Checking for updates...', 'info');
+    } catch (error) {
+        showNotification('Failed to check for updates', 'error');
     }
 }
 
