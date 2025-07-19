@@ -1267,6 +1267,70 @@ ipcMain.handle('get-modrinth-total-count', async () => {
   }
 });
 
+ipcMain.handle('get-current-server-info', async () => {
+  try {
+    logger.debug('Getting current server info');
+    if (!serverManager) {
+      return { success: false, error: 'Server manager not initialized' };
+    }
+    
+    const activeServers = serverManager.getActiveServers();
+    if (activeServers.length === 0) {
+      return { success: false, error: 'No active servers found' };
+    }
+    
+    // Get the first active server (you could enhance this to let user choose)
+    const currentServer = activeServers[0];
+    const serverInfo = {
+      id: currentServer.id,
+      name: currentServer.name,
+      type: currentServer.type,
+      version: currentServer.version,
+      path: currentServer.path
+    };
+    
+    return { success: true, serverInfo };
+  } catch (error) {
+    logger.error('Failed to get current server info:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('quick-install-mod', async (event, projectId, serverId) => {
+  try {
+    logger.debug('Quick installing mod', { projectId, serverId });
+    if (!modrinthManager || !serverManager) {
+      return { success: false, error: 'Managers not initialized' };
+    }
+    
+    // Get server info
+    const server = serverManager.getServer(serverId);
+    if (!server) {
+      return { success: false, error: 'Server not found' };
+    }
+    
+    // Get mod details and latest compatible version
+    const modData = await modrinthManager.getModDetails(projectId);
+    const versions = await modrinthManager.getModVersions(projectId, {
+      gameVersion: server.version.match(/^(\d+\.\d+(?:\.\d+)?)/)?.[1],
+      loader: server.type
+    });
+    
+    if (!versions || versions.length === 0) {
+      return { success: false, error: 'No compatible versions found' };
+    }
+    
+    // Install the latest compatible version
+    const latestVersion = versions[0];
+    const result = await modrinthManager.installModToServer(latestVersion.id, server.path);
+    
+    return { success: true, result };
+  } catch (error) {
+    logger.error('Failed to quick install mod:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('check-modrinth-compatibility', async (event, projectId, gameVersion, loader) => {
   try {
     logger.debug('Checking Modrinth mod compatibility', { projectId, gameVersion, loader });

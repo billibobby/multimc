@@ -3557,9 +3557,78 @@ let currentModData = null;
 function loadModrinthData() {
     loadModrinthFilters();
     loadTotalModCount();
+    loadCurrentServerInfo();
     loadFeaturedMods();
     loadTrendingMods();
     loadPopularMods();
+}
+
+// Get current server information for compatibility filtering
+async function loadCurrentServerInfo() {
+    try {
+        const result = await ipcRenderer.invoke('get-current-server-info');
+        if (result.success) {
+            window.currentServerInfo = result.serverInfo;
+            updateServerCompatibilityFilters();
+        }
+    } catch (error) {
+        console.error('Error loading current server info:', error);
+    }
+}
+
+// Update filters based on current server
+function updateServerCompatibilityFilters() {
+    if (!window.currentServerInfo) return;
+    
+    const server = window.currentServerInfo;
+    
+    // Auto-set loader filter based on server type
+    const loaderMap = {
+        'forge': 'forge',
+        'fabric': 'fabric',
+        'quilt': 'quilt',
+        'neoforge': 'neoforge'
+    };
+    
+    if (loaderMap[server.type]) {
+        const loaderSelect = document.getElementById('modrinth-loader-filter');
+        if (loaderSelect) {
+            loaderSelect.value = loaderMap[server.type];
+        }
+    }
+    
+    // Auto-set game version filter
+    if (server.version) {
+        const versionSelect = document.getElementById('modrinth-version-filter');
+        if (versionSelect) {
+            // Try to match version (e.g., "1.20.1" from "1.20.1-forge-47.1.0")
+            const versionMatch = server.version.match(/^(\d+\.\d+(?:\.\d+)?)/);
+            if (versionMatch) {
+                versionSelect.value = versionMatch[1];
+            }
+        }
+    }
+    
+    // Show server compatibility info
+    updateServerCompatibilityDisplay();
+}
+
+// Update the server compatibility display
+function updateServerCompatibilityDisplay() {
+    if (!window.currentServerInfo) return;
+    
+    const server = window.currentServerInfo;
+    const compatibilityInfo = document.getElementById('server-compatibility-info');
+    
+    if (compatibilityInfo) {
+        compatibilityInfo.innerHTML = `
+            <div class="server-compatibility-badge">
+                <i class="fas fa-server"></i>
+                <span>Filtering for: ${server.name} (${server.type} ${server.version})</span>
+            </div>
+        `;
+        compatibilityInfo.style.display = 'block';
+    }
 }
 
 async function loadTotalModCount() {
@@ -3665,33 +3734,100 @@ function displayMods(mods, containerId) {
     // Add mod count display at the top
     const modCountHtml = `<div class="mods-count-display">Showing ${mods.length} mods</div>`;
 
-    const modsHtml = mods.map(mod => `
-        <div class="mod-card" onclick="showModDetails('${mod.project_id}')">
-            <div class="mod-card-header">
-                <img class="mod-card-icon" src="${mod.icon_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSJ1cmwoI2dyYWRpZW50KSIvPgo8ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudCIgeDE9IjAiIHkxPSIwIiB4Mj0iMjAwIiB5Mj0iMjAwIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdFRUE7c3RvcC1vcGFjaXR5OjEiIC8+CjxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6Izc2NEJBQjtzdG9wLW9wYWNpdHk6MSIgLz4KPC9saW5lYXJHcmFkaWVudD4KPC9kZWZzPgo8L3N2Zz4K'}" alt="${mod.title}">
-                <div class="mod-card-overlay">
-                    <div class="mod-card-title">${mod.title}</div>
-                    <div class="mod-card-author">By ${mod.author}</div>
-                </div>
-            </div>
-            <div class="mod-card-content">
-                <div class="mod-card-description">${mod.description || 'No description available'}</div>
-                <div class="mod-card-meta">
-                    <div class="mod-card-stats">
-                        <span><i class="fas fa-download"></i> ${formatNumber(mod.downloads)}</span>
-                        <span><i class="fas fa-heart"></i> ${formatNumber(mod.follows)}</span>
+    const modsHtml = mods.map(mod => {
+        // Check compatibility with current server
+        const isCompatible = checkModCompatibility(mod);
+        const quickInstallBtn = window.currentServerInfo ? `
+            <button class="quick-install-btn ${isCompatible ? 'compatible' : 'incompatible'}" 
+                    onclick="event.stopPropagation(); quickInstallMod('${mod.project_id}', '${mod.title}')"
+                    title="${isCompatible ? 'Install to current server' : 'Incompatible with current server'}">
+                <i class="fas fa-download"></i>
+                ${isCompatible ? 'Quick Install' : 'Incompatible'}
+            </button>
+        ` : '';
+
+        return `
+            <div class="mod-card" onclick="showModDetails('${mod.project_id}')">
+                <div class="mod-card-header">
+                    <img class="mod-card-icon" src="${mod.icon_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSJ1cmwoI2dyYWRpZW50KSIvPgo8ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudCIgeDE9IjAiIHkxPSIwIiB4Mj0iMjAwIiB5Mj0iMjAwIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdFRUE7c3RvcC1vcGFjaXR5OjEiIC8+CjxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6Izc2NEJBQjtzdG9wLW9wYWNpdHk6MSIgLz4KPC9saW5lYXJHcmFkaWVudD4KPC9kZWZzPgo8L3N2Zz4K'}" alt="${mod.title}">
+                    <div class="mod-card-overlay">
+                        <div class="mod-card-title">${mod.title}</div>
+                        <div class="mod-card-author">By ${mod.author}</div>
+                        ${quickInstallBtn}
                     </div>
-                    <span class="mod-date">${formatDate(mod.date_created)}</span>
                 </div>
-                <div class="mod-card-tags">
-                    ${mod.categories ? mod.categories.slice(0, 3).map(category => `<span class="mod-tag">${category}</span>`).join('') : ''}
-                    ${mod.loaders ? mod.loaders.slice(0, 2).map(loader => `<span class="mod-tag">${loader}</span>`).join('') : ''}
+                <div class="mod-card-content">
+                    <div class="mod-card-description">${mod.description || 'No description available'}</div>
+                    <div class="mod-card-meta">
+                        <div class="mod-card-stats">
+                            <span><i class="fas fa-download"></i> ${formatNumber(mod.downloads)}</span>
+                            <span><i class="fas fa-heart"></i> ${formatNumber(mod.follows)}</span>
+                        </div>
+                        <span class="mod-date">${formatDate(mod.date_created)}</span>
+                    </div>
+                    <div class="mod-card-tags">
+                        ${mod.categories ? mod.categories.slice(0, 3).map(category => `<span class="mod-tag">${category}</span>`).join('') : ''}
+                        ${mod.loaders ? mod.loaders.slice(0, 2).map(loader => `<span class="mod-tag">${loader}</span>`).join('') : ''}
+                    </div>
                 </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     container.innerHTML = modCountHtml + modsHtml;
+}
+
+// Check if a mod is compatible with the current server
+function checkModCompatibility(mod) {
+    if (!window.currentServerInfo) return false;
+    
+    const server = window.currentServerInfo;
+    
+    // Check loader compatibility
+    const loaderMap = {
+        'forge': 'forge',
+        'fabric': 'fabric',
+        'quilt': 'quilt',
+        'neoforge': 'neoforge'
+    };
+    
+    const serverLoader = loaderMap[server.type];
+    if (serverLoader && mod.loaders && !mod.loaders.includes(serverLoader)) {
+        return false;
+    }
+    
+    // Check game version compatibility (basic check)
+    if (server.version && mod.game_versions) {
+        const serverVersion = server.version.match(/^(\d+\.\d+(?:\.\d+)?)/)?.[1];
+        if (serverVersion && !mod.game_versions.includes(serverVersion)) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// Quick install mod to current server
+async function quickInstallMod(projectId, modName) {
+    if (!window.currentServerInfo) {
+        showNotification('No active server found', 'warning');
+        return;
+    }
+    
+    try {
+        showNotification(`Installing ${modName} to ${window.currentServerInfo.name}...`, 'info');
+        
+        const result = await ipcRenderer.invoke('quick-install-mod', projectId, window.currentServerInfo.id);
+        
+        if (result.success) {
+            showNotification(`Successfully installed ${modName} to ${window.currentServerInfo.name}!`, 'success');
+        } else {
+            showNotification(`Failed to install ${modName}: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error installing mod:', error);
+        showNotification(`Failed to install ${modName}`, 'error');
+    }
 }
 
 function switchModrinthSection(section) {
@@ -3737,12 +3873,40 @@ async function searchModrinthMods() {
 }
 
 function getCurrentModrinthFilters() {
-    return {
+    const filters = {
         loader: document.getElementById('modrinth-loader-filter').value,
         gameVersion: document.getElementById('modrinth-version-filter').value,
         category: document.getElementById('modrinth-category-filter').value,
         sortBy: document.getElementById('modrinth-sort-filter').value
     };
+    
+    // Auto-apply server compatibility filters if available
+    if (window.currentServerInfo) {
+        const server = window.currentServerInfo;
+        
+        // Auto-set loader if not already set
+        if (!filters.loader) {
+            const loaderMap = {
+                'forge': 'forge',
+                'fabric': 'fabric',
+                'quilt': 'quilt',
+                'neoforge': 'neoforge'
+            };
+            if (loaderMap[server.type]) {
+                filters.loader = loaderMap[server.type];
+            }
+        }
+        
+        // Auto-set game version if not already set
+        if (!filters.gameVersion && server.version) {
+            const versionMatch = server.version.match(/^(\d+\.\d+(?:\.\d+)?)/);
+            if (versionMatch) {
+                filters.gameVersion = versionMatch[1];
+            }
+        }
+    }
+    
+    return filters;
 }
 
 function applyModrinthFilters() {
@@ -3772,6 +3936,38 @@ function refreshModrinthData() {
 function showModrinthFilters() {
     // This could open a more detailed filter modal in the future
     showNotification('Filters are already visible in the search section', 'info');
+}
+
+// Toggle server compatibility filtering
+function toggleServerCompatibility() {
+    const toggleBtn = document.getElementById('server-compatibility-toggle');
+    const compatibilityInfo = document.getElementById('server-compatibility-info');
+    
+    if (window.serverCompatibilityEnabled) {
+        // Disable server compatibility
+        window.serverCompatibilityEnabled = false;
+        toggleBtn.classList.remove('active');
+        toggleBtn.innerHTML = '<i class="fas fa-server"></i> Server Compatible';
+        if (compatibilityInfo) {
+            compatibilityInfo.style.display = 'none';
+        }
+        showNotification('Server compatibility filtering disabled', 'info');
+    } else {
+        // Enable server compatibility
+        if (!window.currentServerInfo) {
+            showNotification('No active server found. Start a server first.', 'warning');
+            return;
+        }
+        
+        window.serverCompatibilityEnabled = true;
+        toggleBtn.classList.add('active');
+        toggleBtn.innerHTML = '<i class="fas fa-check"></i> Server Compatible';
+        updateServerCompatibilityDisplay();
+        showNotification('Server compatibility filtering enabled', 'success');
+    }
+    
+    // Refresh current section with new filters
+    applyModrinthFilters();
 }
 
 // Utility functions
