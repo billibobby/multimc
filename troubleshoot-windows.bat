@@ -188,4 +188,5 @@ echo 2. Check Windows Defender/Antivirus settings
 echo 3. Make sure no other Minecraft servers are running
 echo 4. Restart your computer and try again
 echo.
-pause 
+echo Press any key to close this window...
+pause >nul 
