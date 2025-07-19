@@ -725,22 +725,29 @@ async function loadDownloadsData() {
                 html += '</div>';
             }
             
-            // Show available versions
+            // Show available versions (filter out installed ones)
             if (availableVersions.length > 0) {
-                html += `<div class="version-group"><h4>AVAILABLE (${availableVersions.length})</h4>`;
-                availableVersions.forEach(version => {
+                const filteredAvailableVersions = availableVersions.filter(version => {
                     const versionId = version.id || version;
-                    const versionName = version.minecraftVersion ? `${version.minecraftVersion}-${version.loaderVersion || versionId}` : versionId;
-                    html += `
-                        <div class="version-item">
-                            <span class="version-name">${versionName}</span>
-                            <button class="btn btn-sm btn-primary" onclick="downloadVersion('${loader}', '${versionId}', event)">
-                                <i class="fas fa-download"></i> Download
-                            </button>
-                        </div>
-                    `;
+                    return !installedVersions.includes(versionId);
                 });
-                html += '</div>';
+                
+                if (filteredAvailableVersions.length > 0) {
+                    html += `<div class="version-group"><h4>AVAILABLE (${filteredAvailableVersions.length})</h4>`;
+                    filteredAvailableVersions.forEach(version => {
+                        const versionId = version.id || version;
+                        const versionName = version.minecraftVersion ? `${version.minecraftVersion}-${version.loaderVersion || versionId}` : versionId;
+                        html += `
+                            <div class="version-item">
+                                <span class="version-name">${versionName}</span>
+                                <button class="btn btn-sm btn-primary" onclick="downloadVersion('${loader}', '${versionId}', event)">
+                                    <i class="fas fa-download"></i> Download
+                                </button>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
             }
             
             container.innerHTML = html;
@@ -2384,7 +2391,13 @@ async function downloadVersion(loader, version, event) {
             
             // Force a complete refresh of the downloads tab
             console.log('Forcing complete downloads refresh...');
-            await refreshDownloads();
+            try {
+                await refreshDownloads();
+            } catch (error) {
+                console.error('Error during refreshDownloads:', error);
+                // Fallback: just refresh the data
+                await loadDownloadsData();
+            }
             
         } else {
             throw new Error(result.error || 'Download failed');
