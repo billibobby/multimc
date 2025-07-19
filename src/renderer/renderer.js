@@ -538,69 +538,72 @@ function loadNetworkData() {
 }
 
 async function loadDownloadsData() {
-    const minecraftVersions = document.getElementById('minecraft-versions');
-    const forgeVersions = document.getElementById('forge-versions');
-
     try {
-        // Load Minecraft versions
-        if (systemStatus && systemStatus.checks.minecraft) {
-            const versions = systemStatus.checks.minecraft.availableVersions || [];
-            const installed = systemStatus.checks.minecraft.installedVersions || [];
-            
-            const versionItems = versions.slice(0, 10).map(version => {
-                const isInstalled = installed.includes(version.id);
-                return `
-                    <div class="version-item">
-                        <div class="version-info">
-                            <div class="version-name">${version.id}</div>
-                            <div class="version-date">${new Date(version.releaseTime).toLocaleDateString()}</div>
-                        </div>
-                        <button class="btn btn-sm ${isInstalled ? 'btn-secondary' : 'btn-primary'}" 
-                                onclick="downloadMinecraft('${version.id}')" 
-                                ${isInstalled ? 'disabled' : ''}>
-                            ${isInstalled ? 'Installed' : 'Download'}
-                        </button>
-                    </div>
-                `;
-            });
-            minecraftVersions.innerHTML = versionItems.join('');
+        if (!systemStatus) {
+            showNotification('System status not available', 'error');
+            return;
         }
 
-        // Load Forge versions
-        if (systemStatus && systemStatus.checks.forge) {
-            const versions = systemStatus.checks.forge.availableVersions || [];
-            const installed = systemStatus.checks.forge.installedVersions || [];
+        // Load versions for each loader
+        const loaders = ['minecraft', 'forge', 'fabric', 'quilt', 'neoforge'];
+        
+        for (const loader of loaders) {
+            const container = document.getElementById(`${loader}-versions`);
+            if (!container) continue;
             
-            const versionItems = versions.slice(0, 10).map(version => {
-                const isInstalled = installed.includes(version.id);
-                const displayName = version.minecraftVersion ? 
-                    `Forge ${version.minecraftVersion}-${version.forgeVersion}` : 
-                    `Forge ${version.id}`;
-                return `
-                    <div class="version-item">
-                        <div class="version-info">
-                            <div class="version-name">${displayName}</div>
-                            <div class="version-date">Minecraft ${version.minecraftVersion || 'Unknown'}</div>
+            const loaderData = systemStatus.checks[loader];
+            if (!loaderData) {
+                container.innerHTML = '<p class="error">Failed to load version data</p>';
+                continue;
+            }
+            
+            const availableVersions = loaderData.availableVersions || [];
+            const installedVersions = loaderData.installedVersions || [];
+            
+            if (availableVersions.length === 0 && installedVersions.length === 0) {
+                container.innerHTML = '<p>No versions available</p>';
+                continue;
+            }
+            
+            let html = '';
+            
+            // Show installed versions first
+            if (installedVersions.length > 0) {
+                html += '<div class="version-group"><h4>Installed</h4>';
+                installedVersions.slice(0, 5).forEach(version => {
+                    html += `
+                        <div class="version-item installed">
+                            <span class="version-name">${version}</span>
+                            <span class="version-status">✓ Installed</span>
                         </div>
-                        <button class="btn btn-sm ${isInstalled ? 'btn-secondary' : 'btn-primary'}" 
-                                onclick="downloadForge('${version.id}')" 
-                                ${isInstalled ? 'disabled' : ''}>
-                            ${isInstalled ? 'Installed' : 'Download'}
-                        </button>
-                    </div>
-                `;
-            });
-            forgeVersions.innerHTML = versionItems.join('');
-        } else {
-            forgeVersions.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.7);">
-                    <i class="fas fa-tools" style="font-size: 48px; margin-bottom: 20px;"></i>
-                    <p>Loading Forge versions...</p>
-                </div>
-            `;
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            // Show available versions
+            if (availableVersions.length > 0) {
+                html += '<div class="version-group"><h4>Available</h4>';
+                availableVersions.slice(0, 5).forEach(version => {
+                    const versionId = version.id || version;
+                    const versionName = version.minecraftVersion ? `${version.minecraftVersion}-${version.loaderVersion || versionId}` : versionId;
+                    html += `
+                        <div class="version-item">
+                            <span class="version-name">${versionName}</span>
+                            <button class="btn btn-sm btn-primary" onclick="downloadVersion('${loader}', '${versionId}')">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            container.innerHTML = html;
         }
     } catch (error) {
         console.error('Failed to load downloads data:', error);
+        showNotification('Failed to load downloads', 'error');
     }
 }
 
@@ -1135,14 +1138,10 @@ function populateVersionDropdown() {
     
     if (systemStatus) {
         console.log('System status available:', systemStatus);
-        if (serverType === 'vanilla' && systemStatus.checks.minecraft) {
-            availableVersions = systemStatus.checks.minecraft.availableVersions || [];
-            installedVersions = systemStatus.checks.minecraft.installedVersions || [];
-            console.log('Vanilla versions - Available:', availableVersions.length, 'Installed:', installedVersions.length);
-        } else if (serverType === 'forge' && systemStatus.checks.forge) {
-            availableVersions = systemStatus.checks.forge.availableVersions || [];
-            installedVersions = systemStatus.checks.forge.installedVersions || [];
-            console.log('Forge versions - Available:', availableVersions.length, 'Installed:', installedVersions.length);
+        if (systemStatus.checks[serverType]) {
+            availableVersions = systemStatus.checks[serverType].availableVersions || [];
+            installedVersions = systemStatus.checks[serverType].installedVersions || [];
+            console.log(`${serverType} versions - Available:`, availableVersions.length, 'Installed:', installedVersions.length);
         }
     } else {
         console.log('System status not available, using defaults');
@@ -1168,32 +1167,24 @@ function populateVersionDropdown() {
         const availableGroup = document.createElement('optgroup');
         availableGroup.label = 'Available Versions';
         
-        availableVersions.slice(0, 10).forEach(version => {
+        availableVersions.forEach(version => {
             const option = document.createElement('option');
             option.value = version.id || version;
-            option.textContent = version.id ? `${version.id} (${new Date(version.releaseTime).toLocaleDateString()})` : version;
+            option.textContent = version.id || version;
             availableGroup.appendChild(option);
         });
         
         versionSelect.appendChild(availableGroup);
     }
     
-    // If no versions are available, add some default options
+    // If no versions available, show message
     if (availableVersions.length === 0 && installedVersions.length === 0) {
-        console.log('No versions found, adding defaults');
-        const defaultVersions = serverType === 'vanilla' 
-            ? ['1.21.1', '1.20.4', '1.19.4', '1.18.2', '1.17.1']
-            : ['1.20.1', '1.19.2', '1.18.2', '1.16.5', '1.15.2'];
-            
-        defaultVersions.forEach(version => {
-            const option = document.createElement('option');
-            option.value = version;
-            option.textContent = `${version} (Download required)`;
-            versionSelect.appendChild(option);
-        });
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No versions available';
+        option.disabled = true;
+        versionSelect.appendChild(option);
     }
-    
-    console.log('Version dropdown populated with', versionSelect.options.length - 1, 'options');
 }
 
 function updateServerLogsList() {
@@ -1652,6 +1643,57 @@ function exportLogs() {
     showNotification('Logs exported successfully', 'success');
 }
 
+// Global functions for downloads
+async function downloadVersion(loader, version) {
+    try {
+        console.log(`Downloading ${loader} version ${version}...`);
+        
+        // Show loading state
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+        button.disabled = true;
+        
+        let result;
+        switch (loader) {
+            case 'minecraft':
+                result = await ipcRenderer.invoke('download-minecraft', version);
+                break;
+            case 'forge':
+                result = await ipcRenderer.invoke('download-forge', version);
+                break;
+            case 'fabric':
+                result = await ipcRenderer.invoke('download-fabric', version);
+                break;
+            case 'quilt':
+                result = await ipcRenderer.invoke('download-quilt', version);
+                break;
+            case 'neoforge':
+                result = await ipcRenderer.invoke('download-neoforge', version);
+                break;
+            default:
+                throw new Error(`Unknown loader: ${loader}`);
+        }
+        
+        if (result.success) {
+            showNotification(`${loader} ${version} downloaded successfully!`, 'success');
+            // Refresh the downloads section
+            await loadDownloadsData();
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error(`Failed to download ${loader} ${version}:`, error);
+        showNotification(`Failed to download ${loader} ${version}: ${error.message}`, 'error');
+    } finally {
+        // Restore button state
+        if (button) {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    }
+}
+
 // Global functions for onclick handlers
 window.showProfileModal = showProfileModal;
 window.showStartServerModal = showStartServerModal;
@@ -1679,4 +1721,5 @@ window.switchLogTab = switchLogTab;
 window.filterLogs = filterLogs;
 window.refreshLogs = refreshLogs;
 window.clearLogs = clearLogs;
-window.exportLogs = exportLogs; 
+window.exportLogs = exportLogs;
+window.downloadVersion = downloadVersion; 

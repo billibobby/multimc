@@ -215,7 +215,7 @@
                         </div>
                         
                         <div class="downloads-grid">
-                            <div class="card">
+                            <div class="card" data-loader="minecraft">
                                 <div class="card-header">
                                     <h3>Minecraft Server Versions</h3>
                                 </div>
@@ -224,11 +224,38 @@
                                 </div>
                             </div>
                             
-                            <div class="card">
+                            <div class="card" data-loader="forge">
                                 <div class="card-header">
                                     <h3>Forge Server Versions</h3>
                                 </div>
                                 <div class="card-content" id="forge-versions">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="card" data-loader="fabric">
+                                <div class="card-header">
+                                    <h3>Fabric Server Versions</h3>
+                                </div>
+                                <div class="card-content" id="fabric-versions">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="card" data-loader="quilt">
+                                <div class="card-header">
+                                    <h3>Quilt Server Versions</h3>
+                                </div>
+                                <div class="card-content" id="quilt-versions">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="card" data-loader="neoforge">
+                                <div class="card-header">
+                                    <h3>NeoForge Server Versions</h3>
+                                </div>
+                                <div class="card-content" id="neoforge-versions">
                                     <div class="loading-spinner"></div>
                                 </div>
                             </div>
@@ -455,6 +482,9 @@
                         <select id="server-type" required>
                             <option value="vanilla">Vanilla Minecraft</option>
                             <option value="forge">Forge (Modded)</option>
+                            <option value="fabric">Fabric (Lightweight)</option>
+                            <option value="quilt">Quilt (Fabric Fork)</option>
+                            <option value="neoforge">NeoForge (Modern Forge)</option>
                         </select>
                     </div>
                     

@@ -305,6 +305,42 @@ ipcMain.handle('download-forge', async (event, version) => {
   }
 });
 
+ipcMain.handle('download-fabric', async (event, version) => {
+  try {
+    logger.system('Downloading Fabric', { version });
+    const result = await systemChecker.downloadFabric(version);
+    logger.system('Fabric download completed', { version, path: result.path });
+    return { success: true, data: result };
+  } catch (error) {
+    logger.error('Failed to download Fabric:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('download-quilt', async (event, version) => {
+  try {
+    logger.system('Downloading Quilt', { version });
+    const result = await systemChecker.downloadQuilt(version);
+    logger.system('Quilt download completed', { version, path: result.path });
+    return { success: true, data: result };
+  } catch (error) {
+    logger.error('Failed to download Quilt:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('download-neoforge', async (event, version) => {
+  try {
+    logger.system('Downloading NeoForge', { version });
+    const result = await systemChecker.downloadNeoForge(version);
+    logger.system('NeoForge download completed', { version, path: result.path });
+    return { success: true, data: result };
+  } catch (error) {
+    logger.error('Failed to download NeoForge:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('check-for-updates', () => {
   logger.info('Manual update check requested');
   checkForUpdates();
@@ -424,8 +460,10 @@ ipcMain.handle('get-server-mods', async (event, serverId) => {
       return { success: false, error: 'Server not found' };
     }
     
-    if (server.type !== 'forge') {
-      return { success: false, error: 'Mods are only supported on Forge servers' };
+    // Check if the server type supports mods
+    const loaderInfo = serverManager.loaderManager.getLoaderInfo(server.type);
+    if (!loaderInfo || !loaderInfo.supportsMods) {
+      return { success: false, error: `Mods are not supported on ${server.type} servers` };
     }
     
     const modsDir = path.join(server.directory, 'mods');
@@ -471,8 +509,10 @@ ipcMain.handle('upload-mod', async (event, serverId, modPath) => {
       return { success: false, error: 'Server not found' };
     }
     
-    if (server.type !== 'forge') {
-      return { success: false, error: 'Mods are only supported on Forge servers' };
+    // Check if the server type supports mods
+    const loaderInfo = serverManager.loaderManager.getLoaderInfo(server.type);
+    if (!loaderInfo || !loaderInfo.supportsMods) {
+      return { success: false, error: `Mods are not supported on ${server.type} servers` };
     }
     
     // Check if mod file exists
@@ -512,8 +552,10 @@ ipcMain.handle('remove-mod', async (event, serverId, modName) => {
       return { success: false, error: 'Server not found' };
     }
     
-    if (server.type !== 'forge') {
-      return { success: false, error: 'Mods are only supported on Forge servers' };
+    // Check if the server type supports mods
+    const loaderInfo = serverManager.loaderManager.getLoaderInfo(server.type);
+    if (!loaderInfo || !loaderInfo.supportsMods) {
+      return { success: false, error: `Mods are not supported on ${server.type} servers` };
     }
     
     const modsDir = path.join(server.directory, 'mods');
