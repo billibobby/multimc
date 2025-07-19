@@ -33,10 +33,11 @@ print_header() {
 # Clear screen and show header
 clear
 print_header
-print_status "Checking for updates..."
+print_status "This tool will update MultiMC Hub to the latest version."
 echo ""
 
 # Check if git is available
+print_status "Checking if Git is installed..."
 if ! command -v git &> /dev/null; then
     print_error "Git is not installed!"
     echo ""
@@ -47,16 +48,8 @@ if ! command -v git &> /dev/null; then
     exit 1
 fi
 
-# Check if we're in a git repository
-if ! git status &> /dev/null; then
-    print_error "This is not a git repository!"
-    echo ""
-    echo "Please download the full MultiMC Hub from:"
-    echo "https://github.com/billibobby/multimc"
-    echo ""
-    read -p "Press Enter to exit..."
-    exit 1
-fi
+print_status "Git is installed. Checking for updates..."
+echo ""
 
 # Fetch latest changes
 print_status "Fetching latest changes from GitHub..."
@@ -69,9 +62,17 @@ if ! git fetch origin main; then
     exit 1
 fi
 
-# Check if we're up to date
+print_status "Fetch completed successfully!"
+echo ""
+
+# Check if we need to update
+print_status "Checking if update is needed..."
 LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse origin/main)
+
+echo "Current version: $LOCAL"
+echo "Latest version:  $REMOTE"
+echo ""
 
 if [ "$LOCAL" == "$REMOTE" ]; then
     print_status "MultiMC Hub is already up to date!"
@@ -80,18 +81,14 @@ if [ "$LOCAL" == "$REMOTE" ]; then
     exit 0
 fi
 
-echo ""
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}           UPDATE AVAILABLE!${NC}"
-echo -e "${BLUE}========================================${NC}"
-echo ""
-echo "A new version of MultiMC Hub is available."
+print_status "Update is available!"
 echo ""
 read -p "Would you like to update now? (y/n): " UPDATE_CHOICE
 
 if [[ $UPDATE_CHOICE =~ ^[Yy]$ ]]; then
     echo ""
     print_status "Updating MultiMC Hub..."
+    echo ""
     
     # Pull latest changes
     if ! git pull origin main; then
@@ -104,6 +101,8 @@ if [[ $UPDATE_CHOICE =~ ^[Yy]$ ]]; then
     print_status "Update completed successfully!"
     echo ""
     print_status "Installing any new dependencies..."
+    echo "This may take a few minutes..."
+    echo ""
     
     if npm install; then
         print_status "Dependencies installed successfully!"
@@ -126,12 +125,15 @@ if [[ $UPDATE_CHOICE =~ ^[Yy]$ ]]; then
     echo "- Added better error handling"
     echo "- Updated dependencies to remove warnings"
     echo "- Improved server startup process"
+    echo "- Fixed Windows batch file closing issues"
     echo ""
     echo "You can now run MultiMC Hub normally."
     echo ""
 else
+    echo ""
     print_status "Update cancelled."
     echo ""
 fi
 
-read -p "Press Enter to exit..." 
+echo "Press Enter to close this window..."
+read -p "" 
