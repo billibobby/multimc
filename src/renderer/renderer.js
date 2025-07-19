@@ -369,21 +369,20 @@ async function loadInitialData() {
 
 async function loadUserProfile() {
     try {
-        // Try to get profile from network manager
-        const response = await fetch('http://localhost:3003/api/profile');
-        if (response.ok) {
-            userProfile = await response.json();
+        // Use IPC to get profile from main process
+        const result = await ipcRenderer.invoke('get-user-profile');
+        if (result && result.success) {
+            userProfile = result.profile;
         } else {
             // Create default profile if none exists
             userProfile = {
-                id: require('crypto').randomUUID(),
-                name: require('os').hostname(),
-                displayName: require('os').hostname(),
-                platform: require('os').platform(),
+                id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+                name: 'User',
+                displayName: 'User',
+                platform: 'unknown',
                 createdAt: new Date().toISOString(),
                 lastSeen: new Date().toISOString()
             };
-            await saveUserProfile(userProfile);
         }
         
         updateUserProfileDisplay();
@@ -391,10 +390,10 @@ async function loadUserProfile() {
         console.error('Failed to load user profile:', error);
         // Create a basic profile as fallback
         userProfile = {
-            id: require('crypto').randomUUID(),
-            name: require('os').hostname(),
-            displayName: require('os').hostname(),
-            platform: require('os').platform(),
+            id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+            name: 'User',
+            displayName: 'User',
+            platform: 'unknown',
             createdAt: new Date().toISOString(),
             lastSeen: new Date().toISOString()
         };
@@ -404,20 +403,13 @@ async function loadUserProfile() {
 
 async function saveUserProfile(profile) {
     try {
-        const response = await fetch('http://localhost:3003/api/profile', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(profile)
-        });
-        
-        if (response.ok) {
+        const result = await ipcRenderer.invoke('save-user-profile', profile);
+        if (result && result.success) {
             userProfile = profile;
             updateUserProfileDisplay();
             return true;
         } else {
-            throw new Error('Failed to save profile');
+            throw new Error(result?.error || 'Failed to save profile');
         }
     } catch (error) {
         console.error('Failed to save user profile:', error);
@@ -600,7 +592,7 @@ function updateServerStatus() {
         return;
     }
 
-    if (serverStatus.activeServers.length === 0) {
+    if (!serverStatus.activeServers || serverStatus.activeServers.length === 0) {
         content.innerHTML = `
             <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.7);">
                 <i class="fas fa-server" style="font-size: 48px; margin-bottom: 20px;"></i>
@@ -676,7 +668,7 @@ function loadServersData() {
         return;
     }
 
-    if (serverStatus.activeServers.length === 0) {
+    if (!serverStatus.activeServers || serverStatus.activeServers.length === 0) {
         grid.innerHTML = `
             <div style="text-align: center; padding: 60px; color: rgba(255, 255, 255, 0.7);">
                 <i class="fas fa-server" style="font-size: 64px; margin-bottom: 20px;"></i>
@@ -765,7 +757,7 @@ function loadNetworkData() {
     `;
 
     // Connected peers
-    if (networkStatus.peers.length === 0) {
+    if (!networkStatus.peers || networkStatus.peers.length === 0) {
         peersInfo.innerHTML = `
             <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.7);">
                 <i class="fas fa-users" style="font-size: 48px; margin-bottom: 20px;"></i>
@@ -3409,19 +3401,28 @@ function closeInviteManager() {
 function switchInviteTab(tab) {
     // Hide all tab contents
     document.querySelectorAll('.invite-tab-content').forEach(content => {
-        content.style.display = 'none';
+        if (content) {
+            content.style.display = 'none';
+        }
     });
     
     // Remove active class from all tabs
     document.querySelectorAll('.invite-tabs .tab-btn').forEach(btn => {
-        btn.classList.remove('active');
+        if (btn) {
+            btn.classList.remove('active');
+        }
     });
     
     // Show selected tab content
-    document.getElementById(`${tab}-invite-tab`).style.display = 'block';
+    const selectedTab = document.getElementById(`${tab}-invite-tab`);
+    if (selectedTab) {
+        selectedTab.style.display = 'block';
+    }
     
     // Add active class to selected tab
-    event.target.classList.add('active');
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
 }
 
 async function generateInviteCode() {
@@ -3976,6 +3977,12 @@ function filterModVersions() {
         item.style.display = show ? 'flex' : 'none';
     });
 }
+
+// Global error handler
+window.addEventListener('error', function(event) {
+    console.error('Global error caught:', event.error);
+    // Don't show error notifications for every error to avoid spam
+});
 
 // Initialize Modrinth when tab is shown
 document.addEventListener('DOMContentLoaded', function() {
