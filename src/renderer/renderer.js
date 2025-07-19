@@ -743,8 +743,20 @@ async function loadDownloadsData() {
 async function refreshDownloads() {
     console.log('Refreshing downloads...');
     showNotification('Refreshing version data...', 'info');
-    await loadDownloadsData();
-    showNotification('Downloads refreshed successfully!', 'success');
+    
+    try {
+        // Refresh system status to get latest version data
+        systemStatus = await ipcRenderer.invoke('get-system-status');
+        console.log('System status refreshed for downloads:', systemStatus);
+        
+        // Refresh downloads data display
+        await loadDownloadsData();
+        
+        showNotification('Downloads refreshed successfully!', 'success');
+    } catch (error) {
+        console.error('Failed to refresh downloads:', error);
+        showNotification('Failed to refresh downloads: ' + error.message, 'error');
+    }
 }
 
 async function refreshEntireApp() {
@@ -1782,9 +1794,9 @@ function copyServerAddress(address) {
     });
 }
 
-function refreshStatus() {
+async function refreshStatus() {
     console.log('refreshStatus called - reloading all data');
-    loadInitialData();
+    await refreshEntireApp();
 }
 
 async function debugSystemStatus() {
@@ -1842,8 +1854,22 @@ async function debugSystemStatus() {
     showNotification('Debug info logged to console', 'info');
 }
 
-function refreshNetworkStatus() {
-    loadNetworkData();
+async function refreshNetworkStatus() {
+    console.log('Refreshing network status...');
+    try {
+        // Refresh network status from main process
+        networkStatus = await ipcRenderer.invoke('get-network-status');
+        updateNetworkStatus();
+        updateConnectionStatus();
+        
+        // Also refresh network data display
+        await loadNetworkData();
+        
+        showNotification('Network status refreshed successfully!', 'success');
+    } catch (error) {
+        console.error('Failed to refresh network status:', error);
+        showNotification('Failed to refresh network status', 'error');
+    }
 }
 
 async function showNetworkInfo() {
