@@ -695,8 +695,24 @@ class LoaderManager {
     }
     
     // Get the latest stable Fabric installer
-    const installerResponse = await fetch('https://meta.fabricmc.net/v2/versions/installer');
-    const installers = await installerResponse.json();
+    const installers = await new Promise((resolve, reject) => {
+      https.get('https://meta.fabricmc.net/v2/versions/installer', (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            try {
+              resolve(JSON.parse(data));
+            } catch (e) {
+              reject(new Error('Invalid JSON response'));
+            }
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}`));
+          }
+        });
+      }).on('error', reject);
+    });
+    
     const stableInstaller = installers.find(installer => installer.stable);
     
     if (!stableInstaller) {
@@ -874,16 +890,46 @@ class LoaderManager {
     try {
       console.log(`Downloading Minecraft server version ${version}...`);
       
-      const manifestResponse = await fetch('https://launchermeta.mojang.com/mc/game/version_manifest.json');
-      const manifest = await manifestResponse.json();
+      const manifest = await new Promise((resolve, reject) => {
+        https.get('https://launchermeta.mojang.com/mc/game/version_manifest.json', (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            if (res.statusCode === 200) {
+              try {
+                resolve(JSON.parse(data));
+              } catch (e) {
+                reject(new Error('Invalid JSON response'));
+              }
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}`));
+            }
+          });
+        }).on('error', reject);
+      });
       
       const versionInfo = manifest.versions.find(v => v.id === version);
       if (!versionInfo) {
         throw new Error(`Version ${version} not found`);
       }
       
-      const versionResponse = await fetch(versionInfo.url);
-      const versionData = await versionResponse.json();
+      const versionData = await new Promise((resolve, reject) => {
+        https.get(versionInfo.url, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            if (res.statusCode === 200) {
+              try {
+                resolve(JSON.parse(data));
+              } catch (e) {
+                reject(new Error('Invalid JSON response'));
+              }
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}`));
+            }
+          });
+        }).on('error', reject);
+      });
       
       if (!versionData.downloads || !versionData.downloads.server) {
         throw new Error(`No server download available for version ${version}`);
@@ -915,9 +961,19 @@ class LoaderManager {
     return new Promise((resolve, reject) => {
       const file = fs.createWriteStream(filePath);
       
+      // Add timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        file.destroy();
+        fs.unlink(filePath, () => {});
+        reject(new Error('Download timeout - request took too long'));
+      }, 30000); // 30 second timeout
+      
       const request = url.startsWith('https') ? https : http;
-      request.get(url, (response) => {
+      const req = request.get(url, (response) => {
         if (response.statusCode !== 200) {
+          clearTimeout(timeout);
+          file.destroy();
+          fs.unlink(filePath, () => {});
           reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
           return;
         }
@@ -936,16 +992,31 @@ class LoaderManager {
         response.pipe(file);
         
         file.on('finish', () => {
+          clearTimeout(timeout);
           file.close();
           resolve();
         });
         
         file.on('error', (err) => {
+          clearTimeout(timeout);
           fs.unlink(filePath, () => {}); // Delete the file async, but don't check the result
           reject(err);
         });
-      }).on('error', (err) => {
+      });
+      
+      req.on('error', (err) => {
+        clearTimeout(timeout);
+        file.destroy();
+        fs.unlink(filePath, () => {});
         reject(err);
+      });
+      
+      req.setTimeout(30000, () => {
+        clearTimeout(timeout);
+        req.destroy();
+        file.destroy();
+        fs.unlink(filePath, () => {});
+        reject(new Error('Connection timeout'));
       });
     });
   }
