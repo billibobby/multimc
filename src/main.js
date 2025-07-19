@@ -3,6 +3,7 @@ const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const { ServerManager } = require('./server/ServerManager');
 const { NetworkManager } = require('./network/NetworkManager');
+const { ExternalHostingManager } = require('./server/ExternalHostingManager');
 const { SystemChecker } = require('./utils/SystemChecker');
 const { logger } = require('./utils/Logger');
 const fs = require('fs/promises'); // Added for file system operations
@@ -10,6 +11,7 @@ const fs = require('fs/promises'); // Added for file system operations
 let mainWindow;
 let serverManager;
 let networkManager;
+let externalHostingManager;
 let systemChecker;
 
 // Auto-updater configuration
@@ -170,6 +172,12 @@ async function initializeManagers() {
     await serverManager.initialize();
     logger.server('ServerManager initialized successfully');
     
+    // Initialize external hosting manager
+    logger.server('Initializing ExternalHostingManager');
+    externalHostingManager = new ExternalHostingManager();
+    await externalHostingManager.initialize();
+    logger.server('ExternalHostingManager initialized successfully');
+    
     // Set up event listeners to forward server events to renderer
     serverManager.on('server-update', (data) => {
       logger.debug('Forwarding server-update to renderer', data);
@@ -178,11 +186,27 @@ async function initializeManagers() {
       }
     });
     
+    // Set up event listeners for external hosting
+    externalHostingManager.on('service-configured', (data) => {
+      logger.debug('External hosting service configured', data);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('external-hosting-service-configured', data);
+      }
+    });
+    
+    externalHostingManager.on('server-creating', (data) => {
+      logger.debug('External server creating', data);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('external-server-creating', data);
+      }
+    });
+    
     // Send initial status to renderer
     logger.info('Sending initial status to renderer');
     mainWindow.webContents.send('system-status', systemStatus);
     mainWindow.webContents.send('network-status', networkManager.getStatus());
     mainWindow.webContents.send('server-status', serverManager.getStatus());
+    mainWindow.webContents.send('external-hosting-status', externalHostingManager.getStatus());
     
     logger.info('All managers initialized successfully');
   } catch (error) {
@@ -433,6 +457,44 @@ ipcMain.handle('get-logs', async (event, lines = 100) => {
     return { success: true, logs };
   } catch (error) {
     logger.error('Failed to get logs:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-server-logs', async (event, serverId = null, lines = 100) => {
+  try {
+    logger.debug('Getting server logs', { serverId, lines });
+    
+    if (!serverManager) {
+      return { success: false, error: 'Server manager not initialized' };
+    }
+    
+    // If no specific server ID, get logs from all running servers
+    if (!serverId) {
+      const allLogs = [];
+      for (const [id, server] of serverManager.activeServers) {
+        try {
+          const serverLogs = await serverManager.getServerLogs(id, lines);
+          allLogs.push(...serverLogs);
+        } catch (error) {
+          logger.error(`Failed to get logs for server ${id}:`, error);
+        }
+      }
+      
+      // Sort by timestamp and return most recent
+      allLogs.sort((a, b) => {
+        const timeA = new Date(a.match(/\[(.*?)\]/)?.[1] || 0);
+        const timeB = new Date(b.match(/\[(.*?)\]/)?.[1] || 0);
+        return timeB - timeA;
+      });
+      
+      return { success: true, logs: allLogs.slice(0, lines) };
+    } else {
+      const logs = await serverManager.getServerLogs(serverId, lines);
+      return { success: true, logs };
+    }
+  } catch (error) {
+    logger.error('Failed to get server logs:', error);
     return { success: false, error: error.message };
   }
 });
@@ -795,6 +857,146 @@ ipcMain.handle('open-external', async (event, url) => {
   await shell.openExternal(url);
 });
 
+// External Hosting IPC Handlers
+ipcMain.handle('get-external-hosting-services', async () => {
+  try {
+    logger.debug('Getting external hosting services');
+    if (!externalHostingManager) {
+      return { success: false, error: 'External hosting manager not initialized' };
+    }
+    return { success: true, services: externalHostingManager.getAvailableServices() };
+  } catch (error) {
+    logger.error('Failed to get external hosting services:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('check-external-service-status', async (event, serviceId) => {
+  try {
+    logger.debug('Checking external service status', { serviceId });
+    if (!externalHostingManager) {
+      return { success: false, error: 'External hosting manager not initialized' };
+    }
+    const status = await externalHostingManager.checkServiceStatus(serviceId);
+    return { success: true, status };
+  } catch (error) {
+    logger.error('Failed to check external service status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('setup-external-service-account', async (event, serviceId, credentials) => {
+  try {
+    logger.debug('Setting up external service account', { serviceId });
+    if (!externalHostingManager) {
+      return { success: false, error: 'External hosting manager not initialized' };
+    }
+    const result = await externalHostingManager.setupServiceAccount(serviceId, credentials);
+    return { success: true, ...result };
+  } catch (error) {
+    logger.error('Failed to setup external service account:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-recommended-external-service', async (event, serverConfig) => {
+  try {
+    logger.debug('Getting recommended external service', { serverConfig });
+    if (!externalHostingManager) {
+      return { success: false, error: 'External hosting manager not initialized' };
+    }
+    const service = await externalHostingManager.getRecommendedService(serverConfig);
+    return { success: true, service };
+  } catch (error) {
+    logger.error('Failed to get recommended external service:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('create-external-server', async (event, serviceId, serverConfig) => {
+  try {
+    logger.debug('Creating external server', { serviceId, serverConfig });
+    if (!externalHostingManager) {
+      return { success: false, error: 'External hosting manager not initialized' };
+    }
+    const serverInfo = await externalHostingManager.createServerOnService(serviceId, serverConfig);
+    return { success: true, serverInfo };
+  } catch (error) {
+    logger.error('Failed to create external server:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-external-setup-guide', async (event, serviceId, serverConfig) => {
+  try {
+    logger.debug('Getting external setup guide', { serviceId, serverConfig });
+    if (!externalHostingManager) {
+      return { success: false, error: 'External hosting manager not initialized' };
+    }
+    const guide = await externalHostingManager.generateSetupGuide(serviceId, serverConfig);
+    return { success: true, guide };
+  } catch (error) {
+    logger.error('Failed to get external setup guide:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-external-hosting-status', async () => {
+  try {
+    logger.debug('Getting external hosting status');
+    if (!externalHostingManager) {
+      return { success: false, error: 'External hosting manager not initialized' };
+    }
+    return { success: true, status: externalHostingManager.getStatus() };
+  } catch (error) {
+    logger.error('Failed to get external hosting status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Enhanced modded server support IPC handlers
+ipcMain.handle('get-modded-server-recommendations', async (event, serverConfig) => {
+  try {
+    logger.debug('Getting modded server recommendations', { serverConfig });
+    if (!externalHostingManager) {
+      return { success: false, error: 'External hosting manager not initialized' };
+    }
+    const recommendations = externalHostingManager.getModdedServerRecommendations(serverConfig);
+    return { success: true, recommendations };
+  } catch (error) {
+    logger.error('Failed to get modded server recommendations:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-available-modpacks', async (event, serviceId) => {
+  try {
+    logger.debug('Getting available modpacks', { serviceId });
+    if (!externalHostingManager) {
+      return { success: false, error: 'External hosting manager not initialized' };
+    }
+    const modpacks = externalHostingManager.getAvailableModpacks(serviceId);
+    return { success: true, modpacks };
+  } catch (error) {
+    logger.error('Failed to get available modpacks:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-modded-setup-guide', async (event, serviceId, serverConfig) => {
+  try {
+    logger.debug('Getting modded setup guide', { serviceId, serverConfig });
+    if (!externalHostingManager) {
+      return { success: false, error: 'External hosting manager not initialized' };
+    }
+    const guide = externalHostingManager.generateModdedSetupGuide(serviceId, serverConfig);
+    return { success: true, guide };
+  } catch (error) {
+    logger.error('Failed to get modded setup guide:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Event listeners for real-time updates
 ipcMain.on('server-update', (event, data) => {
   logger.debug('Server update received', data);
@@ -840,6 +1042,14 @@ app.on('window-all-closed', async () => {
     }
   } catch (error) {
     logger.error('Error during NetworkManager cleanup:', error);
+  }
+  
+  try {
+    if (externalHostingManager) {
+      await externalHostingManager.cleanup();
+    }
+  } catch (error) {
+    logger.error('Error during ExternalHostingManager cleanup:', error);
   }
   
   if (process.platform !== 'darwin') {

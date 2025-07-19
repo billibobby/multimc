@@ -51,6 +51,10 @@
                     <i class="fas fa-download"></i>
                     <span>Downloads</span>
                 </a>
+                <a href="#external-hosting" class="nav-item" data-tab="external-hosting">
+                    <i class="fas fa-cloud"></i>
+                    <span>External Hosting</span>
+                </a>
                 <a href="#logs" class="nav-item" data-tab="logs">
                     <i class="fas fa-file-alt"></i>
                     <span>Logs</span>
@@ -148,7 +152,7 @@
                                         <i class="fas fa-download"></i>
                                         <span>Download Files</span>
                                     </button>
-                                    <button class="quick-action-btn" onclick="refreshStatus()">
+                                    <button class="quick-action-btn" id="refresh-status-btn">
                                         <i class="fas fa-sync"></i>
                                         <span>Refresh Status</span>
                                     </button>
@@ -204,6 +208,56 @@
                                 </div>
                                 <div class="card-content" id="connected-peers">
                                     <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Game Activity Section -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3><i class="fas fa-gamepad"></i> Live Game Activity</h3>
+                                    <button class="btn btn-sm btn-secondary" onclick="refreshGameActivity()">
+                                        <i class="fas fa-sync"></i> Refresh
+                                    </button>
+                                </div>
+                                <div class="card-content">
+                                    <div class="game-activity-container">
+                                        <div class="activity-filters">
+                                            <button class="activity-filter-btn active" onclick="filterActivity('all')" data-filter="all">
+                                                All Activity
+                                            </button>
+                                            <button class="activity-filter-btn" onclick="filterActivity('players')" data-filter="players">
+                                                <i class="fas fa-users"></i> Players
+                                            </button>
+                                            <button class="activity-filter-btn" onclick="filterActivity('commands')" data-filter="commands">
+                                                <i class="fas fa-terminal"></i> Commands
+                                            </button>
+                                            <button class="activity-filter-btn" onclick="filterActivity('chat')" data-filter="chat">
+                                                <i class="fas fa-comments"></i> Chat
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="activity-log" id="game-activity-log">
+                                            <div class="activity-entry info">
+                                                <span class="activity-time">[System]</span>
+                                                <span class="activity-message">Waiting for game activity...</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="activity-stats">
+                                            <div class="stat-item">
+                                                <span class="stat-label">Online Players:</span>
+                                                <span class="stat-value" id="online-players">0</span>
+                                            </div>
+                                            <div class="stat-item">
+                                                <span class="stat-label">Total Players:</span>
+                                                <span class="stat-value" id="total-players">0</span>
+                                            </div>
+                                            <div class="stat-item">
+                                                <span class="stat-label">Uptime:</span>
+                                                <span class="stat-value" id="server-uptime">00:00:00</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -283,6 +337,87 @@
                                 </div>
                                 <div class="card-content" id="neoforge-versions">
                                     <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- External Hosting Tab -->
+                <div id="external-hosting" class="tab-content">
+                    <div class="external-hosting-container">
+                        <div class="external-hosting-header">
+                            <h2>External Hosting Services</h2>
+                            <p class="subtitle">Host your Minecraft servers on free external services when port forwarding isn't available</p>
+                        </div>
+                        
+                        <!-- Service Overview -->
+                        <div class="services-overview">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3><i class="fas fa-info-circle"></i> About External Hosting</h3>
+                                </div>
+                                <div class="card-content">
+                                    <p>External hosting services allow you to host Minecraft servers without needing to configure port forwarding on your router. These services are free but have limitations:</p>
+                                    <ul>
+                                        <li><strong>Limited uptime:</strong> Servers may go to sleep when inactive</li>
+                                        <li><strong>Player limits:</strong> Usually 10-20 players maximum</li>
+                                        <li><strong>Startup time:</strong> May take 2-5 minutes to start after being inactive</li>
+                                        <li><strong>No custom plugins:</strong> Limited to basic server types</li>
+                                    </ul>
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-lightbulb"></i>
+                                        <strong>Tip:</strong> External hosting is perfect for casual gaming sessions with friends when you don't have port forwarding set up.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Available Services -->
+                        <div class="services-grid" id="services-grid">
+                            <div class="loading-spinner"></div>
+                        </div>
+                        
+                        <!-- Quick Setup -->
+                        <div class="quick-setup-section">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3><i class="fas fa-rocket"></i> Quick Setup</h3>
+                                </div>
+                                <div class="card-content">
+                                    <div class="setup-steps">
+                                        <div class="setup-step">
+                                            <div class="step-number">1</div>
+                                            <div class="step-content">
+                                                <h4>Choose a Service</h4>
+                                                <p>Select from available free hosting services above</p>
+                                            </div>
+                                        </div>
+                                        <div class="setup-step">
+                                            <div class="step-number">2</div>
+                                            <div class="step-content">
+                                                <h4>Create Account</h4>
+                                                <p>Sign up for a free account on the chosen service</p>
+                                            </div>
+                                        </div>
+                                        <div class="setup-step">
+                                            <div class="step-number">3</div>
+                                            <div class="step-content">
+                                                <h4>Configure Server</h4>
+                                                <p>Set up your server with preferred settings</p>
+                                            </div>
+                                        </div>
+                                        <div class="setup-step">
+                                            <div class="step-number">4</div>
+                                            <div class="step-content">
+                                                <h4>Share & Play</h4>
+                                                <p>Share the server address with your friends</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary" onclick="showExternalHostingSetup()">
+                                        <i class="fas fa-play"></i> Start Setup Guide
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -611,6 +746,133 @@
                         <!-- Mods will be loaded here -->
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Hosting Setup Modal -->
+    <div id="external-hosting-setup-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>External Hosting Setup</h3>
+                <button class="modal-close" onclick="closeModal('external-hosting-setup-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="setup-wizard">
+                    <div class="wizard-step" id="step-1">
+                        <h4>Step 1: Choose Your Server Configuration</h4>
+                        <form id="external-server-config-form">
+                            <div class="form-group">
+                                <label for="external-server-name">Server Name</label>
+                                <input type="text" id="external-server-name" required placeholder="My External Server">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="external-server-type">Server Type</label>
+                                <select id="external-server-type" required onchange="updateModdedOptions()">
+                                    <option value="vanilla">Vanilla Minecraft</option>
+                                    <option value="spigot">Spigot</option>
+                                    <option value="paper">Paper</option>
+                                    <option value="forge">Forge (Modded)</option>
+                                    <option value="fabric">Fabric (Modded)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" id="modded-options" style="display: none;">
+                                <label for="modpack-selection">Modpack (Optional)</label>
+                                <select id="modpack-selection">
+                                    <option value="">Use default modpack</option>
+                                </select>
+                                <small class="form-help">Select a pre-approved modpack or use the default</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="external-server-version">Version</label>
+                                <select id="external-server-version" required>
+                                    <option value="">Select version...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="external-max-players">Max Players</label>
+                                <input type="number" id="external-max-players" value="10" min="1" max="20">
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="wizard-step" id="step-2" style="display: none;">
+                        <h4>Step 2: Select Hosting Service</h4>
+                        <div class="service-selection">
+                            <div id="recommended-service" class="recommended-service">
+                                <h5>Recommended Service</h5>
+                                <div class="service-card recommended" id="recommended-service-card">
+                                    <!-- Recommended service will be loaded here -->
+                                </div>
+                            </div>
+                            
+                            <div class="other-services">
+                                <h5>Other Available Services</h5>
+                                <div id="other-services-list">
+                                    <!-- Other services will be loaded here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="wizard-step" id="step-3" style="display: none;">
+                        <h4>Step 3: Service Setup Guide</h4>
+                        <div id="setup-guide-content">
+                            <!-- Setup guide will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="previousSetupStep()" id="prev-step-btn" style="display: none;">Previous</button>
+                <button class="btn btn-primary" onclick="nextSetupStep()" id="next-step-btn">Next</button>
+                <button class="btn btn-success" onclick="completeExternalSetup()" id="complete-setup-btn" style="display: none;">Complete Setup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Account Setup Modal -->
+    <div id="service-account-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Setup Service Account</h3>
+                <button class="modal-close" onclick="closeModal('service-account-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="service-info" id="service-info">
+                    <!-- Service information will be loaded here -->
+                </div>
+                
+                <form id="service-account-form">
+                    <div class="form-group">
+                        <label for="service-username">Username/Email</label>
+                        <input type="text" id="service-username" required placeholder="Enter your username or email">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="service-password">Password</label>
+                        <input type="password" id="service-password" required placeholder="Enter your password">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="save-credentials">
+                            Save credentials for future use (stored locally)
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('service-account-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="setupServiceAccount()">Setup Account</button>
             </div>
         </div>
     </div>

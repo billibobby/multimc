@@ -17,6 +17,14 @@ A modern, cross-platform Minecraft server management application built with Elec
 - **Host Transfer**: Seamlessly transfer server hosting between peers
 - **Real-time Status**: Live updates of server and network status
 
+### ☁️ External Hosting
+- **Free Hosting Services**: Aternos, Minehut, PloudOS, Server.pro
+- **No Port Forwarding**: Host servers without router configuration
+- **Modded Server Support**: Forge and Fabric compatibility
+- **Smart Recommendations**: Automatic service selection based on needs
+- **Setup Wizard**: Step-by-step guidance for external hosting
+- **Service Monitoring**: Real-time status checking of hosting services
+
 ### 📁 File Management
 - **Installation Scanner**: Scan your PC for existing Minecraft installations
 - **Asset Copying**: Copy Minecraft assets and versions from existing installations
@@ -75,6 +83,16 @@ npm run build:all
 5. **Configure settings**: Set port, max players, and other options
 6. **Click "Start Server"**: The app will download required files and start the server
 
+### Using External Hosting (No Port Forwarding Required)
+
+1. **Go to "External Hosting" tab**
+2. **Click "Start Setup Guide"**
+3. **Choose server configuration**: Vanilla, Forge, or Fabric
+4. **Select modpack** (for modded servers): Choose from available options
+5. **Get recommended service**: Aternos, Minehut, PloudOS, or Server.pro
+6. **Follow setup instructions**: Create account and configure server
+7. **Share server address**: Use the provided connection details
+
 ### Using the Installation Scanner
 
 1. **Go to Downloads tab**
@@ -96,22 +114,27 @@ npm run build:all
 ```
 multimc/
 ├── src/
-│   ├── main.js                 # Main Electron process
+│   ├── main.js                    # Main Electron process
 │   ├── network/
-│   │   └── NetworkManager.js   # P2P networking
+│   │   └── NetworkManager.js      # P2P networking
 │   ├── renderer/
-│   │   ├── index.html         # Main UI
-│   │   ├── renderer.js        # Frontend logic
-│   │   └── styles.css         # Styling
+│   │   ├── index.html            # Main UI
+│   │   ├── renderer.js           # Frontend logic
+│   │   └── styles.css            # Styling
 │   ├── server/
-│   │   └── ServerManager.js   # Server management
+│   │   ├── ServerManager.js      # Local server management
+│   │   └── ExternalHostingManager.js # External hosting feature
 │   └── utils/
-│       ├── LoaderManager.js   # Mod loader management
-│       ├── Logger.js          # Logging system
-│       └── SystemChecker.js   # System validation
-├── assets/                    # Application assets
-├── package.json              # Dependencies and scripts
-└── README.md                 # This file
+│       ├── LoaderManager.js      # Mod loader management
+│       ├── Logger.js             # Logging system
+│       └── SystemChecker.js      # System validation
+├── assets/                       # Application assets
+├── package.json                 # Dependencies and scripts
+├── EXTERNAL_HOSTING.md          # External hosting documentation
+├── GITHUB_SETUP.md              # GitHub setup guide
+├── start-project.sh             # Linux/macOS startup script
+├── start-project.bat            # Windows startup script
+└── README.md                    # This file
 ```
 
 ## Supported Loaders

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>External Hosting Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .service-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>External Hosting Test</h1>
+    
+    <div class="test-section">
+        <h2>External Hosting Manager Test</h2>
+        <p>This test simulates the external hosting functionality without requiring the full Electron app.</p>
+        
+        <button onclick="testExternalHostingManager()">Test External Hosting Manager</button>
+        <button onclick="testServiceRecommendation()">Test Service Recommendation</button>
+        <button onclick="testSetupGuide()">Test Setup Guide</button>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Available Services</h2>
+        <div id="services-display"></div>
+    </div>
+
+    <script>
+        // Mock ExternalHostingManager for testing
+        class MockExternalHostingManager {
+            constructor() {
+                this.hostingServices = {
+                    aternos: {
+                        name: 'Aternos',
+                        website: 'https://aternos.org',
+                        apiEndpoint: 'https://api.aternos.org',
+                        free: true,
+                        maxPlayers: 20,
+                        uptime: 'Limited (auto-sleep)',
+                        features: ['Vanilla', 'Spigot', 'Paper', 'Forge', 'Fabric'],
+                        setupRequired: true,
+                        requiresAccount: true
+                    },
+                    minehut: {
+                        name: 'Minehut',
+                        website: 'https://minehut.com',
+                        apiEndpoint: 'https://api.minehut.com',
+                        free: true,
+                        maxPlayers: 10,
+                        uptime: 'Limited',
+                        features: ['Vanilla', 'Spigot', 'Paper'],
+                        setupRequired: true,
+                        requiresAccount: true
+                    },
+                    ploudos: {
+                        name: 'PloudOS',
+                        website: 'https://ploudos.com',
+                        apiEndpoint: 'https://ploudos.com/api',
+                        free: true,
+                        maxPlayers: 20,
+                        uptime: 'Limited',
+                        features: ['Vanilla', 'Spigot', 'Paper', 'Forge'],
+                        setupRequired: true,
+                        requiresAccount: true
+                    },
+                    serverpro: {
+                        name: 'Server.pro',
+                        website: 'https://server.pro',
+                        apiEndpoint: 'https://api.server.pro',
+                        free: true,
+                        maxPlayers: 10,
+                        uptime: 'Limited',
+                        features: ['Vanilla', 'Spigot', 'Paper'],
+                        setupRequired: true,
+                        requiresAccount: true
+                    }
+                };
+            }
+
+            getAvailableServices() {
+                return Object.keys(this.hostingServices).map(key => ({
+                    id: key,
+                    ...this.hostingServices[key]
+                }));
+            }
+
+            async getRecommendedService(serverConfig) {
+                const compatibleServices = Object.entries(this.hostingServices)
+                    .filter(([id, service]) => this.validateServerConfig(serverConfig, service))
+                    .map(([id, service]) => ({
+                        id,
+                        ...service,
+                        score: this.calculateServiceScore(service, serverConfig)
+                    }))
+                    .sort((a, b) => b.score - a.score);
+
+                return compatibleServices[0] || null;
+            }
+
+            validateServerConfig(serverConfig, service) {
+                if (!service.features.includes(serverConfig.type) && 
+                    !service.features.includes('Vanilla')) {
+                    return false;
+                }
+
+                if (serverConfig.maxPlayers > service.maxPlayers) {
+                    return false;
+                }
+
+                return true;
+            }
+
+            calculateServiceScore(service, serverConfig) {
+                let score = 0;
+                score += service.maxPlayers;
+                if (service.uptime.includes('Limited')) {
+                    score += 5;
+                }
+                score += service.features.length * 2;
+                return score;
+            }
+
+            async generateSetupGuide(serviceId, serverConfig) {
+                const service = this.hostingServices[serviceId];
+                if (!service) {
+                    throw new Error(`Unknown service: ${serviceId}`);
+                }
+
+                const instructions = {
+                    aternos: [
+                        '1. Go to https://aternos.org and create a free account',
+                        '2. Create a new server with your preferred Minecraft version',
+                        '3. Configure server settings (gamemode, difficulty, etc.)',
+                        '4. Start your server and get the connection details',
+                        '5. Share the server address with your friends'
+                    ],
+                    minehut: [
+                        '1. Go to https://minehut.com and sign up for a free account',
+                        '2. Create a new server from the dashboard',
+                        '3. Choose your server type and version',
+                        '4. Configure basic settings and start the server',
+                        '5. Use the provided server address to connect'
+                    ],
+                    ploudos: [
+                        '1. Visit https://ploudos.com and register for a free account',
+                        '2. Create a new server instance',
+                        '3. Select your preferred Minecraft version and type',
+                        '4. Configure server properties and start',
+                        '5. Share the server IP with your players'
+                    ],
+                    serverpro: [
+                        '1. Go to https://server.pro and create a free account',
+                        '2. Create a new server from your dashboard',
+                        '3. Choose server type and Minecraft version',
+                        '4. Configure settings and launch your server',
+                        '5. Use the provided connection details'
+                    ]
+                };
+
+                return {
+                    service: service.name,
+                    website: service.website,
+                    steps: instructions[serviceId] || ['Please visit the service website for setup instructions'],
+                    requirements: {
+                        account: service.requiresAccount,
+                        maxPlayers: service.maxPlayers,
+                        supportedTypes: service.features,
+                        uptime: service.uptime
+                    },
+                    tips: [
+                        'Free services often have limited uptime and may put servers to sleep when inactive',
+                        'Server startup may take several minutes after being inactive',
+                        'Consider upgrading to paid plans for better performance and uptime',
+                        'Keep your server active by having players join regularly'
+                    ]
+                };
+            }
+        }
+
+        const externalHostingManager = new MockExternalHostingManager();
+
+        function addTestResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function displayServices() {
+            const services = externalHostingManager.getAvailableServices();
+            const displayDiv = document.getElementById('services-display');
+            
+            const html = services.map(service => `
+                <div class="service-card">
+                    <h3>${service.name}</h3>
+                    <p><strong>Max Players:</strong> ${service.maxPlayers}</p>
+                    <p><strong>Uptime:</strong> ${service.uptime}</p>
+                    <p><strong>Features:</strong> ${service.features.join(', ')}</p>
+                    <p><strong>Website:</strong> <a href="${service.website}" target="_blank">${service.website}</a></p>
+                </div>
+            `).join('');
+            
+            displayDiv.innerHTML = html;
+        }
+
+        async function testExternalHostingManager() {
+            addTestResult('Testing External Hosting Manager...', 'info');
+            
+            try {
+                const services = externalHostingManager.getAvailableServices();
+                addTestResult(`✓ Found ${services.length} external hosting services`, 'success');
+                
+                services.forEach(service => {
+                    addTestResult(`  - ${service.name}: ${service.maxPlayers} players, ${service.uptime}`, 'info');
+                });
+                
+            } catch (error) {
+                addTestResult(`✗ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testServiceRecommendation() {
+            addTestResult('Testing Service Recommendation...', 'info');
+            
+            try {
+                const serverConfig = {
+                    name: 'Test Server',
+                    type: 'vanilla',
+                    version: '1.20.1',
+                    maxPlayers: 15
+                };
+                
+                const recommended = await externalHostingManager.getRecommendedService(serverConfig);
+                
+                if (recommended) {
+                    addTestResult(`✓ Recommended service: ${recommended.name} (Score: ${recommended.score})`, 'success');
+                } else {
+                    addTestResult('✗ No compatible services found', 'error');
+                }
+                
+            } catch (error) {
+                addTestResult(`✗ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSetupGuide() {
+            addTestResult('Testing Setup Guide Generation...', 'info');
+            
+            try {
+                const serverConfig = {
+                    name: 'Test Server',
+                    type: 'vanilla',
+                    version: '1.20.1',
+                    maxPlayers: 10
+                };
+                
+                const guide = await externalHostingManager.generateSetupGuide('aternos', serverConfig);
+                
+                addTestResult(`✓ Generated setup guide for ${guide.service}`, 'success');
+                addTestResult(`  Steps: ${guide.steps.length}`, 'info');
+                addTestResult(`  Tips: ${guide.tips.length}`, 'info');
+                
+            } catch (error) {
+                addTestResult(`✗ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize the test page
+        displayServices();
+    </script>
+</body>
+</html> 

@@ -14,6 +14,11 @@ let currentLogType = 'app'; // 'app' or 'server'
 let serverLogs = [];
 let selectedServerLog = null;
 
+// Game Activity Functions
+let gameActivityLog = [];
+let currentActivityFilter = 'all';
+let activityUpdateInterval = null;
+
 // DOM Elements
 const tabItems = document.querySelectorAll('.nav-item');
 const tabContents = document.querySelectorAll('.tab-content');
@@ -23,6 +28,112 @@ const connectionText = document.getElementById('connection-text');
 const userName = document.getElementById('user-name');
 const sidebarUserName = document.getElementById('sidebar-user-name');
 const sidebarUserPlatform = document.getElementById('sidebar-user-platform');
+
+// Debug logging function
+function debugLog(message, type = 'info') {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] [${type.toUpperCase()}] ${message}`;
+    
+    // Log to console
+    console.log(logMessage);
+    
+    // Also log to a debug file
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const debugFile = path.join(__dirname, 'debug.log');
+        fs.appendFileSync(debugFile, logMessage + '\n');
+    } catch (error) {
+        // Ignore file write errors
+    }
+}
+
+// Override console.log to also write to debug file
+const originalConsoleLog = console.log;
+console.log = function(...args) {
+    originalConsoleLog.apply(console, args);
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const debugFile = path.join(__dirname, 'debug.log');
+        const message = args.map(arg => 
+            typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+        ).join(' ');
+        fs.appendFileSync(debugFile, `[${new Date().toISOString()}] ${message}\n`);
+    } catch (error) {
+        // Ignore file write errors
+    }
+};
+
+// Define refreshEntireApp function early to avoid timing issues
+async function refreshEntireApp() {
+    console.log('=== REFRESHING ENTIRE APPLICATION ===');
+    console.log('refreshEntireApp function called!');
+    
+    // Show visual refresh indicator on the top-right refresh button
+    const refreshButton = document.querySelector('.header-right .btn');
+    console.log('Found refresh button:', refreshButton);
+    let originalText = '';
+    if (refreshButton) {
+        originalText = refreshButton.innerHTML;
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i>';
+        refreshButton.disabled = true;
+        refreshButton.title = 'Refreshing...';
+        console.log('Updated refresh button with spinning icon');
+    } else {
+        console.log('Refresh button not found! Available buttons:', document.querySelectorAll('.header-right .btn'));
+    }
+    
+    showNotification('Refreshing all data...', 'info');
+    
+    try {
+        // Refresh system status - fetch fresh data from main process
+        console.log('Refreshing system status...');
+        systemStatus = await ipcRenderer.invoke('get-system-status');
+        updateSystemStatus();
+        
+        // Refresh network status - fetch fresh data from main process
+        console.log('Refreshing network status...');
+        networkStatus = await ipcRenderer.invoke('get-network-status');
+        updateNetworkStatus();
+        
+        // Refresh server status - fetch fresh data from main process
+        console.log('Refreshing server status...');
+        serverStatus = await ipcRenderer.invoke('get-server-status');
+        updateServerStatus();
+        
+        // Refresh downloads data
+        console.log('Refreshing downloads data...');
+        await loadDownloadsData();
+        
+        // Refresh user profile
+        console.log('Refreshing user profile...');
+        await loadUserProfile();
+        
+        // Refresh servers data
+        console.log('Refreshing servers data...');
+        await loadServersData();
+        
+        // Refresh network data
+        console.log('Refreshing network data...');
+        await loadNetworkData();
+        
+        showNotification('All data refreshed successfully!', 'success');
+        console.log('=== REFRESH COMPLETE ===');
+        
+    } catch (error) {
+        console.error('Error refreshing application:', error);
+        showNotification('Error refreshing data: ' + error.message, 'error');
+    } finally {
+        // Restore button state
+        if (refreshButton && originalText) {
+            refreshButton.innerHTML = originalText;
+            refreshButton.disabled = false;
+            refreshButton.title = 'Refresh all data';
+            console.log('Restored refresh button state');
+        }
+    }
+}
 
 // Installation Scanner functions
 async function scanMinecraftInstallations() {
@@ -214,6 +325,18 @@ function setupEventListeners() {
             refreshEntireApp();
         });
     }
+    
+    // Add event listener for refresh status button
+    const refreshStatusButton = document.getElementById('refresh-status-btn');
+    if (refreshStatusButton) {
+        refreshStatusButton.addEventListener('click', () => {
+            console.log('Refresh status button clicked via event listener');
+            refreshStatus();
+        });
+    }
+    
+    // Start game activity monitoring
+    startGameActivityMonitoring();
 }
 
 async function loadInitialData() {
@@ -339,6 +462,7 @@ async function switchTab(tabName) {
         servers: 'Servers',
         network: 'Network',
         downloads: 'Downloads',
+        externalHosting: 'External Hosting',
         logs: 'Logs',
         settings: 'Settings'
     };
@@ -361,6 +485,9 @@ async function switchTab(tabName) {
                 console.error('Failed to refresh system status:', error);
             }
             loadDownloadsData();
+            break;
+        case 'external-hosting':
+            loadExternalHostingData();
             break;
         case 'logs':
             loadLogsData();
@@ -763,7 +890,8 @@ async function loadDownloadsData() {
         }
     } catch (error) {
         console.error('Failed to load downloads data:', error);
-            showNotification('Failed to load downloads', 'error');
+        showNotification('Failed to load downloads', 'error');
+    }
 }
 
 async function refreshDownloads() {
@@ -808,76 +936,6 @@ async function refreshDownloads() {
             showNotification('Failed to refresh downloads: ' + error.message, 'error');
         }
     }
-}
-
-async function refreshEntireApp() {
-    console.log('=== REFRESHING ENTIRE APPLICATION ===');
-    console.log('refreshEntireApp function called!');
-    
-    // Show visual refresh indicator on the top-right refresh button
-    const refreshButton = document.querySelector('.header-right .btn');
-    console.log('Found refresh button:', refreshButton);
-    let originalText = '';
-    if (refreshButton) {
-        originalText = refreshButton.innerHTML;
-        refreshButton.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i>';
-        refreshButton.disabled = true;
-        refreshButton.title = 'Refreshing...';
-        console.log('Updated refresh button with spinning icon');
-    } else {
-        console.log('Refresh button not found! Available buttons:', document.querySelectorAll('.header-right .btn'));
-    }
-    
-    showNotification('Refreshing all data...', 'info');
-    
-    try {
-        // Refresh system status - fetch fresh data from main process
-        console.log('Refreshing system status...');
-        systemStatus = await ipcRenderer.invoke('get-system-status');
-        updateSystemStatus();
-        
-        // Refresh network status - fetch fresh data from main process
-        console.log('Refreshing network status...');
-        networkStatus = await ipcRenderer.invoke('get-network-status');
-        updateNetworkStatus();
-        
-        // Refresh server status - fetch fresh data from main process
-        console.log('Refreshing server status...');
-        serverStatus = await ipcRenderer.invoke('get-server-status');
-        updateServerStatus();
-        
-        // Refresh downloads data
-        console.log('Refreshing downloads data...');
-        await loadDownloadsData();
-        
-        // Refresh user profile
-        console.log('Refreshing user profile...');
-        await loadUserProfile();
-        
-        // Refresh servers data
-        console.log('Refreshing servers data...');
-        await loadServersData();
-        
-        // Refresh network data
-        console.log('Refreshing network data...');
-        await loadNetworkData();
-        
-        showNotification('All data refreshed successfully!', 'success');
-        console.log('=== REFRESH COMPLETE ===');
-        
-    } catch (error) {
-        console.error('Error refreshing application:', error);
-        showNotification('Error refreshing data: ' + error.message, 'error');
-    } finally {
-        // Restore button state
-        if (refreshButton && originalText) {
-            refreshButton.innerHTML = originalText;
-            refreshButton.disabled = false;
-            refreshButton.title = 'Refresh all data';
-            console.log('Restored refresh button state');
-        }
-    }
-}
 }
 
 // Modal functions
@@ -2563,4 +2621,637 @@ window.showDownloadProgressModal = showDownloadProgressModal;
 window.hideDownloadProgressModal = hideDownloadProgressModal;
 window.updateDownloadProgress = updateDownloadProgress;
 window.refreshEntireApp = refreshEntireApp;
-window.refreshDownloads = refreshDownloads; 
+window.refreshDownloads = refreshDownloads;
+
+// Game Activity Functions
+function refreshGameActivity() {
+    console.log('Refreshing game activity...');
+    
+    // Show refresh indicator
+    const refreshBtn = document.querySelector('button[onclick="refreshGameActivity()"]');
+    if (refreshBtn) {
+        const originalText = refreshBtn.innerHTML;
+        refreshBtn.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i> Refreshing...';
+        refreshBtn.disabled = true;
+        
+        setTimeout(() => {
+            refreshBtn.innerHTML = originalText;
+            refreshBtn.disabled = false;
+        }, 1000);
+    }
+    
+    // Load server logs to extract game activity
+    loadServerGameActivity();
+}
+
+async function loadServerGameActivity() {
+    try {
+        // Get the most recent server logs
+        const result = await ipcRenderer.invoke('get-server-logs', null, 100);
+        if (result.success && result.logs) {
+            parseGameActivityFromLogs(result.logs);
+        }
+    } catch (error) {
+        console.error('Failed to load game activity:', error);
+        addActivityEntry('error', 'Failed to load game activity: ' + error.message);
+    }
+}
+
+function parseGameActivityFromLogs(logs) {
+    const newActivity = [];
+    
+    logs.forEach(log => {
+        const logLine = log.trim();
+        
+        // Parse different types of game activity
+        if (logLine.includes('joined the game') || logLine.includes('left the game')) {
+            newActivity.push({
+                type: 'players',
+                time: extractTimestamp(logLine),
+                message: logLine
+            });
+        } else if (logLine.includes('issued server command') || logLine.includes('ran command')) {
+            newActivity.push({
+                type: 'commands',
+                time: extractTimestamp(logLine),
+                message: logLine
+            });
+        } else if (logLine.includes('<') && logLine.includes('>') && logLine.includes(':')) {
+            // Chat messages
+            newActivity.push({
+                type: 'chat',
+                time: extractTimestamp(logLine),
+                message: logLine
+            });
+        } else if (logLine.includes('Starting minecraft server') || logLine.includes('Done')) {
+            newActivity.push({
+                type: 'info',
+                time: extractTimestamp(logLine),
+                message: logLine
+            });
+        }
+    });
+    
+    // Add new activity to the log
+    gameActivityLog = [...newActivity, ...gameActivityLog].slice(0, 100); // Keep last 100 entries
+    
+    updateGameActivityDisplay();
+    updateActivityStats();
+}
+
+function extractTimestamp(logLine) {
+    const timestampMatch = logLine.match(/\[(.*?)\]/);
+    return timestampMatch ? timestampMatch[1] : new Date().toLocaleTimeString();
+}
+
+function addActivityEntry(type, message) {
+    const entry = {
+        type: type,
+        time: new Date().toLocaleTimeString(),
+        message: message
+    };
+    
+    gameActivityLog.unshift(entry);
+    gameActivityLog = gameActivityLog.slice(0, 100); // Keep last 100 entries
+    
+    updateGameActivityDisplay();
+}
+
+function updateGameActivityDisplay() {
+    const activityLog = document.getElementById('game-activity-log');
+    if (!activityLog) return;
+    
+    let filteredActivity = gameActivityLog;
+    if (currentActivityFilter !== 'all') {
+        filteredActivity = gameActivityLog.filter(entry => entry.type === currentActivityFilter);
+    }
+    
+    if (filteredActivity.length === 0) {
+        activityLog.innerHTML = `
+            <div class="activity-entry info">
+                <span class="activity-time">[System]</span>
+                <span class="activity-message">No ${currentActivityFilter === 'all' ? '' : currentActivityFilter} activity found</span>
+            </div>
+        `;
+        return;
+    }
+    
+    const activityEntries = filteredActivity.map(entry => `
+        <div class="activity-entry ${entry.type}">
+            <span class="activity-time">[${entry.time}]</span>
+            <span class="activity-message">${entry.message}</span>
+        </div>
+    `);
+    
+    activityLog.innerHTML = activityEntries.join('');
+}
+
+function filterActivity(filter) {
+    currentActivityFilter = filter;
+    
+    // Update filter buttons
+    document.querySelectorAll('.activity-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+    
+    updateGameActivityDisplay();
+}
+
+function updateActivityStats() {
+    const onlinePlayers = gameActivityLog.filter(entry => 
+        entry.type === 'players' && entry.message.includes('joined the game')
+    ).length;
+    
+    const totalPlayers = gameActivityLog.filter(entry => 
+        entry.type === 'players'
+    ).length;
+    
+    // Calculate uptime (this would need to be tracked from server start)
+    const uptime = '00:00:00'; // Placeholder
+    
+    document.getElementById('online-players').textContent = onlinePlayers;
+    document.getElementById('total-players').textContent = totalPlayers;
+    document.getElementById('server-uptime').textContent = uptime;
+}
+
+// Start monitoring game activity
+function startGameActivityMonitoring() {
+    if (activityUpdateInterval) {
+        clearInterval(activityUpdateInterval);
+    }
+    
+    // Update activity every 5 seconds
+    activityUpdateInterval = setInterval(() => {
+        loadServerGameActivity();
+    }, 5000);
+    
+    // Initial load
+    loadServerGameActivity();
+}
+
+// Stop monitoring game activity
+function stopGameActivityMonitoring() {
+    if (activityUpdateInterval) {
+        clearInterval(activityUpdateInterval);
+        activityUpdateInterval = null;
+    }
+}
+
+// External Hosting Functions
+let externalHostingServices = [];
+let currentSetupStep = 1;
+let selectedExternalService = null;
+let externalServerConfig = {};
+
+// Load external hosting services
+async function loadExternalHostingServices() {
+    try {
+        const result = await ipcRenderer.invoke('get-external-hosting-services');
+        if (result.success) {
+            externalHostingServices = result.services;
+            displayExternalHostingServices();
+        } else {
+            console.error('Failed to load external hosting services:', result.error);
+            showNotification('Failed to load external hosting services', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading external hosting services:', error);
+        showNotification('Error loading external hosting services', 'error');
+    }
+}
+
+// Display external hosting services
+function displayExternalHostingServices() {
+    const servicesGrid = document.getElementById('services-grid');
+    if (!servicesGrid) return;
+
+    if (externalHostingServices.length === 0) {
+        servicesGrid.innerHTML = '<div class="loading-spinner"></div>';
+        return;
+    }
+
+    const html = externalHostingServices.map(service => `
+        <div class="service-card" onclick="selectExternalService('${service.id}')">
+            <div class="service-header">
+                <div class="service-name">${service.name}</div>
+                <div class="service-status" id="status-${service.id}">
+                    <div class="service-status-dot"></div>
+                    <span>Checking...</span>
+                </div>
+            </div>
+            
+            <div class="service-features">
+                <div class="service-feature">
+                    <i class="fas fa-check"></i>
+                    <span>Max ${service.maxPlayers} players</span>
+                </div>
+                <div class="service-feature">
+                    <i class="fas fa-check"></i>
+                    <span>${service.uptime}</span>
+                </div>
+                <div class="service-feature">
+                    <i class="fas fa-check"></i>
+                    <span>${service.features.join(', ')}</span>
+                </div>
+                ${service.moddedSupport ? `
+                <div class="service-feature modded-support">
+                    <i class="fas fa-puzzle-piece"></i>
+                    <span>Modded Support: ${service.moddedSupport.forge ? 'Forge' : ''}${service.moddedSupport.forge && service.moddedSupport.fabric ? ' & ' : ''}${service.moddedSupport.fabric ? 'Fabric' : ''}</span>
+                </div>
+                <div class="service-feature">
+                    <i class="fas fa-memory"></i>
+                    <span>RAM: ${service.moddedSupport.ramLimit}</span>
+                </div>
+                ` : ''}
+            </div>
+            
+            <div class="service-limits">
+                <div class="service-limit">
+                    <div class="limit-label">Max Players</div>
+                    <div class="limit-value">${service.maxPlayers}</div>
+                </div>
+                <div class="service-limit">
+                    <div class="limit-label">Uptime</div>
+                    <div class="limit-value">${service.uptime}</div>
+                </div>
+            </div>
+            
+            <div class="service-actions">
+                <button class="btn btn-primary" onclick="event.stopPropagation(); setupExternalService('${service.id}')">
+                    <i class="fas fa-rocket"></i> Setup
+                </button>
+                <button class="btn btn-secondary" onclick="event.stopPropagation(); visitServiceWebsite('${service.website}')">
+                    <i class="fas fa-external-link-alt"></i> Visit
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    servicesGrid.innerHTML = html;
+
+    // Check service status for each service
+    externalHostingServices.forEach(service => {
+        checkServiceStatus(service.id);
+    });
+}
+
+// Check service status
+async function checkServiceStatus(serviceId) {
+    try {
+        const result = await ipcRenderer.invoke('check-external-service-status', serviceId);
+        if (result.success) {
+            updateServiceStatus(serviceId, result.status);
+        }
+    } catch (error) {
+        console.error('Error checking service status:', error);
+    }
+}
+
+// Update service status display
+function updateServiceStatus(serviceId, status) {
+    const statusElement = document.getElementById(`status-${serviceId}`);
+    if (!statusElement) return;
+
+    const dot = statusElement.querySelector('.service-status-dot');
+    const text = statusElement.querySelector('span');
+
+    if (status.online) {
+        statusElement.className = 'service-status online';
+        dot.className = 'service-status-dot online';
+        text.textContent = 'Online';
+    } else {
+        statusElement.className = 'service-status offline';
+        dot.className = 'service-status-dot offline';
+        text.textContent = 'Offline';
+    }
+}
+
+// Show external hosting setup modal
+function showExternalHostingSetup() {
+    currentSetupStep = 1;
+    selectedExternalService = null;
+    externalServerConfig = {};
+    
+    // Reset form
+    document.getElementById('external-server-name').value = '';
+    document.getElementById('external-server-type').value = 'vanilla';
+    document.getElementById('external-server-version').value = '';
+    document.getElementById('external-max-players').value = '10';
+    
+    // Show first step
+    showSetupStep(1);
+    
+    // Show modal
+    document.getElementById('external-hosting-setup-modal').classList.add('active');
+}
+
+// Show specific setup step
+function showSetupStep(step) {
+    // Hide all steps
+    document.querySelectorAll('.wizard-step').forEach(el => el.style.display = 'none');
+    
+    // Show current step
+    document.getElementById(`step-${step}`).style.display = 'block';
+    
+    // Update buttons
+    const prevBtn = document.getElementById('prev-step-btn');
+    const nextBtn = document.getElementById('next-step-btn');
+    const completeBtn = document.getElementById('complete-setup-btn');
+    
+    prevBtn.style.display = step > 1 ? 'block' : 'none';
+    nextBtn.style.display = step < 3 ? 'block' : 'none';
+    completeBtn.style.display = step === 3 ? 'block' : 'none';
+    
+    currentSetupStep = step;
+}
+
+// Next setup step
+async function nextSetupStep() {
+    if (currentSetupStep === 1) {
+        // Validate server configuration
+        const config = getExternalServerConfig();
+        if (!config.name || !config.type || !config.version) {
+            showNotification('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        externalServerConfig = config;
+        
+        // Get recommended service
+        try {
+            const result = await ipcRenderer.invoke('get-recommended-external-service', config);
+            if (result.success && result.service) {
+                selectedExternalService = result.service;
+                displayServiceSelection();
+                showSetupStep(2);
+            } else {
+                showNotification('No compatible services found', 'error');
+            }
+        } catch (error) {
+            console.error('Error getting recommended service:', error);
+            showNotification('Error finding compatible services', 'error');
+        }
+    } else if (currentSetupStep === 2) {
+        // Load setup guide
+        try {
+            const result = await ipcRenderer.invoke('get-external-setup-guide', selectedExternalService.id, externalServerConfig);
+            if (result.success) {
+                displaySetupGuide(result.guide);
+                showSetupStep(3);
+            } else {
+                showNotification('Error loading setup guide', 'error');
+            }
+        } catch (error) {
+            console.error('Error loading setup guide:', error);
+            showNotification('Error loading setup guide', 'error');
+        }
+    }
+}
+
+// Previous setup step
+function previousSetupStep() {
+    if (currentSetupStep > 1) {
+        showSetupStep(currentSetupStep - 1);
+    }
+}
+
+// Get external server configuration from form
+function getExternalServerConfig() {
+    return {
+        name: document.getElementById('external-server-name').value,
+        type: document.getElementById('external-server-type').value,
+        version: document.getElementById('external-server-version').value,
+        maxPlayers: parseInt(document.getElementById('external-max-players').value)
+    };
+}
+
+// Display service selection
+function displayServiceSelection() {
+    const recommendedCard = document.getElementById('recommended-service-card');
+    const otherServicesList = document.getElementById('other-services-list');
+    
+    // Display recommended service
+    recommendedCard.innerHTML = `
+        <div class="service-header">
+            <div class="service-name">${selectedExternalService.name}</div>
+            <div class="service-status online">
+                <div class="service-status-dot online"></div>
+                <span>Recommended</span>
+            </div>
+        </div>
+        <div class="service-features">
+            <div class="service-feature">
+                <i class="fas fa-check"></i>
+                <span>Max ${selectedExternalService.maxPlayers} players</span>
+            </div>
+            <div class="service-feature">
+                <i class="fas fa-check"></i>
+                <span>${selectedExternalService.uptime}</span>
+            </div>
+            <div class="service-feature">
+                <i class="fas fa-check"></i>
+                <span>${selectedExternalService.features.join(', ')}</span>
+            </div>
+        </div>
+        <div class="service-actions">
+            <button class="btn btn-primary" onclick="selectServiceForSetup('${selectedExternalService.id}')">
+                <i class="fas fa-check"></i> Select
+            </button>
+        </div>
+    `;
+    
+    // Display other services
+    const otherServices = externalHostingServices.filter(s => s.id !== selectedExternalService.id);
+    otherServicesList.innerHTML = otherServices.map(service => `
+        <div class="service-card">
+            <div class="service-header">
+                <div class="service-name">${service.name}</div>
+                <div class="service-status">
+                    <div class="service-status-dot"></div>
+                    <span>Available</span>
+                </div>
+            </div>
+            <div class="service-features">
+                <div class="service-feature">
+                    <i class="fas fa-check"></i>
+                    <span>Max ${service.maxPlayers} players</span>
+                </div>
+                <div class="service-feature">
+                    <i class="fas fa-check"></i>
+                    <span>${service.uptime}</span>
+                </div>
+            </div>
+            <div class="service-actions">
+                <button class="btn btn-secondary" onclick="selectServiceForSetup('${service.id}')">
+                    <i class="fas fa-check"></i> Select
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Select service for setup
+function selectServiceForSetup(serviceId) {
+    selectedExternalService = externalHostingServices.find(s => s.id === serviceId);
+    if (selectedExternalService) {
+        nextSetupStep();
+    }
+}
+
+// Display setup guide
+function displaySetupGuide(guide) {
+    const guideContent = document.getElementById('setup-guide-content');
+    
+    guideContent.innerHTML = `
+        <h5>${guide.service} Setup Guide</h5>
+        <p>Follow these steps to set up your server on ${guide.service}:</p>
+        
+        <ul>
+            ${guide.steps.map(step => `<li>${step}</li>`).join('')}
+        </ul>
+        
+        <div class="tips">
+            <h6>Important Tips:</h6>
+            <ul>
+                ${guide.tips.map(tip => `<li>${tip}</li>`).join('')}
+            </ul>
+        </div>
+        
+        <div class="service-requirements">
+            <h6>Service Requirements:</h6>
+            <ul>
+                <li>Account Required: ${guide.requirements.account ? 'Yes' : 'No'}</li>
+                <li>Max Players: ${guide.requirements.maxPlayers}</li>
+                <li>Supported Types: ${guide.requirements.supportedTypes.join(', ')}</li>
+                <li>Uptime: ${guide.requirements.uptime}</li>
+            </ul>
+        </div>
+    `;
+}
+
+// Complete external setup
+function completeExternalSetup() {
+    closeModal('external-hosting-setup-modal');
+    showNotification('External hosting setup guide completed! Visit the service website to create your server.', 'success');
+}
+
+// Setup external service account
+async function setupExternalService(serviceId) {
+    const service = externalHostingServices.find(s => s.id === serviceId);
+    if (!service) return;
+    
+    // Show service account modal
+    const serviceInfo = document.getElementById('service-info');
+    serviceInfo.innerHTML = `
+        <h4>${service.name}</h4>
+        <p>Set up your account for ${service.name} to manage your servers. Your credentials will be stored locally for future use.</p>
+    `;
+    
+    // Reset form
+    document.getElementById('service-username').value = '';
+    document.getElementById('service-password').value = '';
+    document.getElementById('save-credentials').checked = true;
+    
+    // Store selected service
+    selectedExternalService = service;
+    
+    // Show modal
+    document.getElementById('service-account-modal').classList.add('active');
+}
+
+// Setup service account
+async function setupServiceAccount() {
+    const username = document.getElementById('service-username').value;
+    const password = document.getElementById('service-password').value;
+    const saveCredentials = document.getElementById('save-credentials').checked;
+    
+    if (!username || !password) {
+        showNotification('Please enter both username and password', 'error');
+        return;
+    }
+    
+    try {
+        const result = await ipcRenderer.invoke('setup-external-service-account', selectedExternalService.id, {
+            username,
+            password,
+            saveCredentials
+        });
+        
+        if (result.success) {
+            closeModal('service-account-modal');
+            showNotification(result.message, 'success');
+            
+            // Show next steps
+            if (result.nextSteps) {
+                showNotification('Next steps: ' + result.nextSteps.join(', '), 'info');
+            }
+        } else {
+            showNotification('Failed to setup account: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error setting up service account:', error);
+        showNotification('Error setting up account: ' + error.message, 'error');
+    }
+}
+
+// Visit service website
+function visitServiceWebsite(url) {
+    ipcRenderer.invoke('open-external', url);
+}
+
+// Select external service
+function selectExternalService(serviceId) {
+    const service = externalHostingServices.find(s => s.id === serviceId);
+    if (service) {
+        showExternalHostingSetup();
+    }
+}
+
+// Handle external hosting events
+ipcRenderer.on('external-hosting-service-configured', (event, data) => {
+    showNotification(`${data.service} account configured successfully!`, 'success');
+});
+
+ipcRenderer.on('external-server-creating', (event, data) => {
+    showNotification(`Creating server on ${data.serviceName}...`, 'info');
+});
+
+// Load external hosting data when tab is switched
+function loadExternalHostingData() {
+    loadExternalHostingServices();
+}
+
+// Update modded options when server type changes
+async function updateModdedOptions() {
+    const serverType = document.getElementById('external-server-type').value;
+    const moddedOptions = document.getElementById('modded-options');
+    const modpackSelection = document.getElementById('modpack-selection');
+    
+    if (serverType === 'forge' || serverType === 'fabric') {
+        moddedOptions.style.display = 'block';
+        
+        // Get modded server recommendations
+        const serverConfig = getExternalServerConfig();
+        try {
+            const result = await ipcRenderer.invoke('get-modded-server-recommendations', serverConfig);
+            if (result.success && result.recommendations.length > 0) {
+                // Get modpacks from the best service
+                const bestService = result.recommendations[0];
+                const modpacksResult = await ipcRenderer.invoke('get-available-modpacks', bestService.serviceId);
+                
+                if (modpacksResult.success) {
+                    const options = ['<option value="">Use default modpack</option>'];
+                    modpacksResult.modpacks.forEach(modpack => {
+                        options.push(`<option value="${modpack.name}">${modpack.name} (${modpack.ramLimit})</option>`);
+                    });
+                    modpackSelection.innerHTML = options.join('');
+                }
+            }
+        } catch (error) {
+            console.error('Error updating modded options:', error);
+        }
+    } else {
+        moddedOptions.style.display = 'none';
+    }
+}

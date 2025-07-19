@@ -158,6 +158,16 @@ class ServerManager extends EventEmitter {
         const fabricDir = path.join(os.homedir(), '.multimc-hub', 'loaders', config.type, `fabric-${config.version}`);
         await fs.copy(fabricDir, serverDir);
         console.log(`Copied Fabric server files from ${fabricDir} to ${serverDir}`);
+        
+        // Rename the server JAR to match what Fabric launcher expects
+        const [minecraftVersion] = config.version.split('-');
+        const originalJarPath = path.join(serverDir, `server-${minecraftVersion}.jar`);
+        const expectedJarPath = path.join(serverDir, 'server.jar');
+        
+        if (await fs.pathExists(originalJarPath)) {
+          await fs.move(originalJarPath, expectedJarPath);
+          console.log(`Renamed server JAR from server-${minecraftVersion}.jar to server.jar`);
+        }
       } else {
         // For other loaders, copy just the server JAR
         const localJarPath = path.join(serverDir, 'server.jar');
@@ -206,17 +216,22 @@ class ServerManager extends EventEmitter {
         status: 'starting',
         hostId: this.networkManager.getLocalPeerId(),
         hostAddress: this.networkManager.getLocalAddress(),
-        process: serverProcess,
         directory: serverDir,
         startTime: new Date().toISOString(),
         autoStart: config.autoStart || false,
         mods: config.mods || []
       };
       
-      // Add to active servers
-      this.activeServers.set(serverId, serverInfo);
+      // Store process separately (not in the serializable object)
+      const serverInfoWithProcess = {
+        ...serverInfo,
+        process: serverProcess
+      };
       
-      // Save server configuration
+      // Add to active servers (with process for internal use)
+      this.activeServers.set(serverId, serverInfoWithProcess);
+      
+      // Save server configuration (serializable version)
       await this.saveServerConfiguration(serverInfo);
       
       // Set up process event handlers
@@ -715,6 +730,30 @@ max-chained-neighbor-updates=1000000
     const serverDir = path.join(this.serversDir, serverId);
     await fs.ensureDir(serverDir);
     await extract(archivePath, { dir: serverDir });
+  }
+
+  async getServerLogs(serverId, lines = 100) {
+    try {
+      const server = this.activeServers.get(serverId);
+      if (!server) {
+        throw new Error(`Server ${serverId} not found`);
+      }
+      
+      const logPath = path.join(server.directory, 'logs', 'latest.log');
+      
+      if (!await fs.pathExists(logPath)) {
+        return [];
+      }
+      
+      const logContent = await fs.readFile(logPath, 'utf8');
+      const logLines = logContent.split('\n').filter(line => line.trim());
+      
+      // Return the last N lines
+      return logLines.slice(-lines);
+    } catch (error) {
+      console.error(`Failed to get logs for server ${serverId}:`, error);
+      return [];
+    }
   }
 
   getStatus() {
