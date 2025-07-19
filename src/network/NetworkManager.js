@@ -289,6 +289,12 @@ class NetworkManager extends EventEmitter {
   }
 
   async broadcastDiscovery() {
+    // Check if discovery socket is available
+    if (!this.discoverySocket) {
+      console.warn('Discovery socket not available, skipping broadcast');
+      return;
+    }
+
     const profile = await this.getCurrentProfile();
     const discoveryMessage = {
       type: 'discovery',
@@ -307,12 +313,22 @@ class NetworkManager extends EventEmitter {
     const interfaces = this.getNetworkInterfaces();
     interfaces.forEach(iface => {
       if (iface.family === 'IPv4' && !iface.internal) {
-        this.discoverySocket.send(message, 0, message.length, this.discoveryPort, iface.address);
+        try {
+          this.discoverySocket.send(message, 0, message.length, this.discoveryPort, iface.address);
+        } catch (error) {
+          console.error(`Failed to send discovery message to ${iface.address}:`, error);
+        }
       }
     });
   }
 
   sendDiscoveryResponse(rinfo) {
+    // Check if discovery socket is available
+    if (!this.discoverySocket) {
+      console.warn('Discovery socket not available, skipping discovery response');
+      return;
+    }
+
     const response = {
       type: 'discovery-response',
       peerId: this.localPeerId,
@@ -323,7 +339,11 @@ class NetworkManager extends EventEmitter {
     };
 
     const message = Buffer.from(JSON.stringify(response));
-    this.discoverySocket.send(message, 0, message.length, rinfo.port, rinfo.address);
+    try {
+      this.discoverySocket.send(message, 0, message.length, rinfo.port, rinfo.address);
+    } catch (error) {
+      console.error(`Failed to send discovery response to ${rinfo.address}:${rinfo.port}:`, error);
+    }
   }
 
   async sendToPeer(peerId, messageType, data) {
