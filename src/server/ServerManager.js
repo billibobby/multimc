@@ -214,7 +214,12 @@ class ServerManager extends EventEmitter {
       
       // Broadcast server started
       if (!isRestore) {
-        this.networkManager.broadcast('server-started', serverInfo);
+        try {
+          await this.networkManager.broadcast('server-started', serverInfo);
+        } catch (error) {
+          console.error('Failed to broadcast server started:', error);
+          // Don't throw here, server is still started successfully
+        }
       }
       
       console.log(`Server ${config.name} started with ID ${serverId}`);
@@ -255,7 +260,12 @@ class ServerManager extends EventEmitter {
       this.activeServers.delete(serverId);
       
       // Broadcast server stopped
-      this.networkManager.broadcast('server-stopped', { serverId, name: server.name });
+      try {
+        await this.networkManager.broadcast('server-stopped', { serverId, name: server.name });
+      } catch (error) {
+        console.error('Failed to broadcast server stopped:', error);
+        // Don't throw here, server is still stopped successfully
+      }
       
       console.log(`Server ${server.name} stopped`);
     } catch (error) {
@@ -513,16 +523,26 @@ max-chained-neighbor-updates=1000000
     console.log('Cleaning up ServerManager...');
     
     // Stop all active servers
+    const cleanupPromises = [];
     for (const [serverId, server] of this.activeServers) {
-      try {
-        await this.stopServer(serverId);
-      } catch (error) {
-        console.error(`Failed to stop server ${serverId}:`, error);
-      }
+      cleanupPromises.push(
+        this.stopServer(serverId).catch(error => {
+          console.error(`Failed to stop server ${serverId}:`, error);
+        })
+      );
     }
     
+    // Wait for all cleanup operations to complete
+    await Promise.allSettled(cleanupPromises);
+    
     // Save final configurations
-    await this.saveServerConfigurations();
+    try {
+      await this.saveServerConfigurations();
+    } catch (error) {
+      console.error('Failed to save server configurations during cleanup:', error);
+    }
+    
+    console.log('ServerManager cleanup completed');
   }
 }
 

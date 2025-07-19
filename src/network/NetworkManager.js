@@ -356,28 +356,39 @@ class NetworkManager extends EventEmitter {
   }
 
   async broadcast(messageType, data) {
-    const message = {
-      type: messageType,
-      targetId: 'broadcast',
-      sourceId: this.localPeerId,
-      data: data,
-      timestamp: Date.now()
-    };
+    try {
+      const message = {
+        type: messageType,
+        targetId: 'broadcast',
+        sourceId: this.localPeerId,
+        data: data,
+        timestamp: Date.now()
+      };
 
-    const messageBuffer = Buffer.from(JSON.stringify(message));
-    
-    // Send to all peers
-    for (const [peerId, peer] of this.peers) {
-      try {
-        this.communicationSocket.send(messageBuffer, 0, messageBuffer.length, peer.communicationPort, peer.address);
-      } catch (error) {
-        console.error(`Failed to send broadcast to peer ${peerId}:`, error);
+      const messageBuffer = Buffer.from(JSON.stringify(message));
+      
+      // Send to all peers
+      for (const [peerId, peer] of this.peers) {
+        try {
+          if (this.communicationSocket && !this.communicationSocket.closed) {
+            this.communicationSocket.send(messageBuffer, 0, messageBuffer.length, peer.communicationPort, peer.address);
+          }
+        } catch (error) {
+          console.error(`Failed to send broadcast to peer ${peerId}:`, error);
+        }
       }
-    }
 
-    // Also broadcast via WebSocket
-    if (this.io) {
-      this.io.emit('broadcast', message);
+      // Also broadcast via WebSocket
+      if (this.io) {
+        try {
+          this.io.emit('broadcast', message);
+        } catch (error) {
+          console.error('Failed to broadcast via WebSocket:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to create broadcast message:', error);
+      throw error;
     }
   }
 
@@ -459,15 +470,36 @@ class NetworkManager extends EventEmitter {
   }
 
   async cleanup() {
-    if (this.discoverySocket) {
-      this.discoverySocket.close();
+    console.log('Cleaning up NetworkManager...');
+    
+    try {
+      if (this.discoverySocket) {
+        this.discoverySocket.close();
+        this.discoverySocket = null;
+      }
+    } catch (error) {
+      console.error('Error closing discovery socket:', error);
     }
-    if (this.communicationSocket) {
-      this.communicationSocket.close();
+    
+    try {
+      if (this.communicationSocket) {
+        this.communicationSocket.close();
+        this.communicationSocket = null;
+      }
+    } catch (error) {
+      console.error('Error closing communication socket:', error);
     }
-    if (this.server) {
-      this.server.close();
+    
+    try {
+      if (this.server) {
+        this.server.close();
+        this.server = null;
+      }
+    } catch (error) {
+      console.error('Error closing web server:', error);
     }
+    
+    console.log('NetworkManager cleanup completed');
   }
 
   // Profile management methods

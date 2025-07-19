@@ -379,12 +379,20 @@ app.whenReady().then(() => {
 app.on('window-all-closed', async () => {
   logger.info('All windows closed, cleaning up...');
   
-  if (serverManager) {
-    await serverManager.cleanup();
+  try {
+    if (serverManager) {
+      await serverManager.cleanup();
+    }
+  } catch (error) {
+    logger.error('Error during ServerManager cleanup:', error);
   }
   
-  if (networkManager) {
-    await networkManager.cleanup();
+  try {
+    if (networkManager) {
+      await networkManager.cleanup();
+    }
+  } catch (error) {
+    logger.error('Error during NetworkManager cleanup:', error);
   }
   
   if (process.platform !== 'darwin') {
@@ -401,5 +409,8 @@ process.on('uncaughtException', (error) => {
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled rejection at:', promise, 'reason:', reason);
+  logger.error('Unhandled rejection:', reason);
+  if (reason instanceof Error) {
+    logger.error('Error stack:', reason.stack);
+  }
 }); 
