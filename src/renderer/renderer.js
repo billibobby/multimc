@@ -752,20 +752,45 @@ async function loadDownloadsData() {
 
 async function refreshDownloads() {
     console.log('Refreshing downloads...');
-    showNotification('Refreshing version data...', 'info');
     
-    try {
-        // Refresh system status to get latest version data
-        systemStatus = await ipcRenderer.invoke('get-system-status');
-        console.log('System status refreshed for downloads:', systemStatus);
+    // Show visual refresh indicator
+    const refreshButton = document.querySelector('#downloads .downloads-header button');
+    if (refreshButton) {
+        const originalText = refreshButton.innerHTML;
+        refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        refreshButton.disabled = true;
         
-        // Refresh downloads data display
-        await loadDownloadsData();
+        try {
+            showNotification('Refreshing version data...', 'info');
+            
+            // Refresh system status to get latest version data
+            systemStatus = await ipcRenderer.invoke('get-system-status');
+            console.log('System status refreshed for downloads:', systemStatus);
+            
+            // Refresh downloads data display
+            await loadDownloadsData();
+            
+            showNotification('Downloads refreshed successfully!', 'success');
+        } catch (error) {
+            console.error('Failed to refresh downloads:', error);
+            showNotification('Failed to refresh downloads: ' + error.message, 'error');
+        } finally {
+            // Restore button
+            refreshButton.innerHTML = originalText;
+            refreshButton.disabled = false;
+        }
+    } else {
+        // Fallback if button not found
+        showNotification('Refreshing version data...', 'info');
         
-        showNotification('Downloads refreshed successfully!', 'success');
-    } catch (error) {
-        console.error('Failed to refresh downloads:', error);
-        showNotification('Failed to refresh downloads: ' + error.message, 'error');
+        try {
+            systemStatus = await ipcRenderer.invoke('get-system-status');
+            await loadDownloadsData();
+            showNotification('Downloads refreshed successfully!', 'success');
+        } catch (error) {
+            console.error('Failed to refresh downloads:', error);
+            showNotification('Failed to refresh downloads: ' + error.message, 'error');
+        }
     }
 }
 
@@ -1806,7 +1831,25 @@ function copyServerAddress(address) {
 
 async function refreshStatus() {
     console.log('refreshStatus called - reloading all data');
-    await refreshEntireApp();
+    
+    // Show visual refresh indicator
+    const refreshButton = document.querySelector('.quick-action-btn[onclick="refreshStatus()"]');
+    if (refreshButton) {
+        const originalText = refreshButton.innerHTML;
+        refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Refreshing...</span>';
+        refreshButton.disabled = true;
+        
+        try {
+            await refreshEntireApp();
+        } finally {
+            // Restore button
+            refreshButton.innerHTML = originalText;
+            refreshButton.disabled = false;
+        }
+    } else {
+        // Fallback if button not found
+        await refreshEntireApp();
+    }
 }
 
 async function debugSystemStatus() {
@@ -1866,19 +1909,44 @@ async function debugSystemStatus() {
 
 async function refreshNetworkStatus() {
     console.log('Refreshing network status...');
-    try {
-        // Refresh network status from main process
-        networkStatus = await ipcRenderer.invoke('get-network-status');
-        updateNetworkStatus();
-        updateConnectionStatus();
+    
+    // Show visual refresh indicator
+    const refreshButton = document.querySelector('#network .network-header button');
+    if (refreshButton) {
+        const originalText = refreshButton.innerHTML;
+        refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        refreshButton.disabled = true;
         
-        // Also refresh network data display
-        await loadNetworkData();
-        
-        showNotification('Network status refreshed successfully!', 'success');
-    } catch (error) {
-        console.error('Failed to refresh network status:', error);
-        showNotification('Failed to refresh network status', 'error');
+        try {
+            // Refresh network status from main process
+            networkStatus = await ipcRenderer.invoke('get-network-status');
+            updateNetworkStatus();
+            updateConnectionStatus();
+            
+            // Also refresh network data display
+            await loadNetworkData();
+            
+            showNotification('Network status refreshed successfully!', 'success');
+        } catch (error) {
+            console.error('Failed to refresh network status:', error);
+            showNotification('Failed to refresh network status', 'error');
+        } finally {
+            // Restore button
+            refreshButton.innerHTML = originalText;
+            refreshButton.disabled = false;
+        }
+    } else {
+        // Fallback if button not found
+        try {
+            networkStatus = await ipcRenderer.invoke('get-network-status');
+            updateNetworkStatus();
+            updateConnectionStatus();
+            await loadNetworkData();
+            showNotification('Network status refreshed successfully!', 'success');
+        } catch (error) {
+            console.error('Failed to refresh network status:', error);
+            showNotification('Failed to refresh network status', 'error');
+        }
     }
 }
 
@@ -2187,7 +2255,24 @@ function filterLogs() {
 }
 
 async function refreshLogs() {
-    await loadLogsData();
+    // Show visual refresh indicator
+    const refreshButton = document.querySelector('#logs .logs-controls button[onclick="refreshLogs()"]');
+    if (refreshButton) {
+        const originalText = refreshButton.innerHTML;
+        refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        refreshButton.disabled = true;
+        
+        try {
+            await loadLogsData();
+        } finally {
+            // Restore button
+            refreshButton.innerHTML = originalText;
+            refreshButton.disabled = false;
+        }
+    } else {
+        // Fallback if button not found
+        await loadLogsData();
+    }
 }
 
 async function clearLogs() {
