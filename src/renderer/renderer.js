@@ -804,7 +804,6 @@ async function refreshDownloads() {
 async function refreshEntireApp() {
     console.log('=== REFRESHING ENTIRE APPLICATION ===');
     console.log('refreshEntireApp function called!');
-    alert('Refresh function called!'); // Temporary alert for testing
     
     // Show visual refresh indicator on the top-right refresh button
     const refreshButton = document.querySelector('.header-right .btn');
@@ -2345,6 +2344,9 @@ function exportLogs() {
 
 // Global functions for downloads
 async function downloadVersion(loader, version, event) {
+    let button = null;
+    let originalText = '';
+    
     try {
         console.log(`=== DOWNLOADING ${loader.toUpperCase()} ${version} ===`);
         
@@ -2355,8 +2357,6 @@ async function downloadVersion(loader, version, event) {
         updateDownloadProgress(0, 'Starting download...');
         
         // Show loading state on button (if called from button click)
-        let button = null;
-        let originalText = '';
         if (event && event.target) {
             button = event.target.closest('button');
             if (button) {
@@ -2521,7 +2521,7 @@ function updateDownloadProgress(progress, status) {
     }
 }
 
-// Global functions for onclick handlers
+// Global functions for onclick handlers - moved to top to fix timing issues
 window.showProfileModal = showProfileModal;
 window.showStartServerModal = showStartServerModal;
 window.showDownloadModal = showDownloadModal;
