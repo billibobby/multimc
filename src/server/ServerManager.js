@@ -259,6 +259,11 @@ class ServerManager extends EventEmitter {
       return serverInfo;
     } catch (error) {
       console.error('Failed to start server:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        config: config
+      });
       throw error;
     }
   }
@@ -550,26 +555,16 @@ max-chained-neighbor-updates=1000000
       minecraftVersion = config.version.split('-')[0];
     }
     
-    // Check if Minecraft version is installed
-    const minecraftVersionPath = path.join(os.homedir(), '.multimc-hub', 'minecraft', 'versions', minecraftVersion);
-    const minecraftJarPath = path.join(minecraftVersionPath, `${minecraftVersion}.jar`);
-    const minecraftJsonPath = path.join(minecraftVersionPath, `${minecraftVersion}.json`);
+    // Check if Minecraft server JAR is available (this is what we actually need)
+    const minecraftServerJarPath = path.join(os.homedir(), '.multimc-hub', 'minecraft', `server-${minecraftVersion}.jar`);
     
-    console.log(`Checking Minecraft version ${minecraftVersion} at: ${minecraftVersionPath}`);
+    console.log(`Checking Minecraft server JAR for version ${minecraftVersion} at: ${minecraftServerJarPath}`);
     
-    if (!await fs.pathExists(minecraftVersionPath)) {
-      throw new Error(`Minecraft version ${minecraftVersion} is not installed. Please download it first.`);
+    if (!await fs.pathExists(minecraftServerJarPath)) {
+      throw new Error(`Minecraft server JAR for version ${minecraftVersion} is not installed. Please download it first.`);
     }
     
-    if (!await fs.pathExists(minecraftJarPath)) {
-      throw new Error(`Minecraft JAR file for version ${minecraftVersion} is missing. Please download it first.`);
-    }
-    
-    if (!await fs.pathExists(minecraftJsonPath)) {
-      throw new Error(`Minecraft JSON file for version ${minecraftVersion} is missing. Please download it first.`);
-    }
-    
-    console.log(`✅ Minecraft version ${minecraftVersion} is properly installed`);
+    console.log(`✅ Minecraft server JAR for version ${minecraftVersion} is properly installed`);
     
     // Check if loader is installed (for modded servers)
     if (config.type !== 'vanilla') {
@@ -585,6 +580,9 @@ max-chained-neighbor-updates=1000000
       if (config.type === 'fabric') {
         const fabricServerJar = path.join(loaderPath, `server-${minecraftVersion}.jar`);
         const fabricLaunchJar = path.join(loaderPath, 'fabric-server-launch.jar');
+        
+        console.log(`Checking Fabric server JAR at: ${fabricServerJar}`);
+        console.log(`Checking Fabric launch JAR at: ${fabricLaunchJar}`);
         
         if (!await fs.pathExists(fabricServerJar)) {
           throw new Error(`Fabric server JAR for ${config.version} is missing. Please download it first.`);
