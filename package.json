@@ -1,18 +1,21 @@
 {
   "name": "multimc-hub",
   "version": "1.0.0",
-  "description": "A multi-hosting Minecraft server hub with network discovery and management",
+  "description": "A standalone desktop application for managing Minecraft servers with network discovery, mod management, and multiplayer hosting",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
     "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux",
+    "build:win": "electron-builder --win --x64",
+    "build:mac": "electron-builder --mac --x64",
+    "build:linux": "electron-builder --linux --x64",
+    "build:all": "npm run build:win && npm run build:mac && npm run build:linux",
     "publish": "electron-builder --publish=always",
     "dist": "electron-builder --dir",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "pack": "electron-builder --dir",
+    "make-installer": "npm run build:win && npm run build:mac"
   },
   "keywords": [
     "minecraft",
@@ -20,11 +23,19 @@
     "multiplayer",
     "network",
     "electron",
-    "desktop"
+    "desktop",
+    "standalone",
+    "mods",
+    "gaming",
+    "server-management"
   ],
-  "author": "MultiMC Hub Team",
+  "author": {
+    "name": "MultiMC Hub Team",
+    "email": "support@multimc-hub.com"
+  },
   "license": "MIT",
   "devDependencies": {
+    "@electron/notarize": "^3.0.1",
     "electron": "^28.0.0",
     "electron-builder": "^24.6.4"
   },
@@ -40,19 +51,31 @@
   "build": {
     "appId": "com.multimc.hub",
     "productName": "MultiMC Hub",
+    "copyright": "Copyright © 2024 MultiMC Hub Team",
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "build"
     },
     "files": [
       "src/**/*",
       "assets/**/*",
       "package.json",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "!node_modules/.cache/**/*",
+      "!**/*.map",
+      "!**/test/**/*",
+      "!**/tests/**/*",
+      "!**/*.test.js",
+      "!**/*.spec.js"
     ],
     "extraResources": [
       {
         "from": "assets",
         "to": "assets"
+      },
+      {
+        "from": "build/installer",
+        "to": "installer"
       }
     ],
     "win": {
@@ -62,19 +85,59 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
         }
       ],
-      "icon": "assets/icon.ico",
-      "publisherName": "MultiMC Hub"
+      "icon": "build/icon.ico",
+      "publisherName": "MultiMC Hub",
+      "verifyUpdateCodeSignature": false,
+      "requestedExecutionLevel": "asInvoker"
     },
     "mac": {
-      "target": "dmg",
-      "icon": "assets/icon.icns",
-      "category": "public.app-category.games"
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.games",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
       "category": "Game"
     },
     "nsis": {
@@ -82,13 +145,43 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "MultiMC Hub"
+      "shortcutName": "MultiMC Hub",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh"
+    },
+    "dmg": {
+      "title": "MultiMC Hub Installer",
+      "icon": "build/icon.icns",
+      "background": "build/dmg-background.png",
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     },
     "publish": {
       "provider": "github",
       "owner": "billibobby",
-      "repo": "multimc"
-    }
+      "repo": "multimc",
+      "private": false,
+      "releaseType": "release"
+    },
+    "afterSign": "scripts/notarize.js",
+    "afterAllArtifactBuild": "scripts/after-build.js"
   },
   "engines": {
     "node": ">=16.0.0"

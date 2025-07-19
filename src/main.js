@@ -26,18 +26,28 @@ function createWindow() {
   logger.info('Creating main window');
   
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
+    width: 1600,
+    height: 1000,
     minWidth: 1200,
     minHeight: 800,
+    icon: path.join(__dirname, '../assets/icon.png'),
+    titleBarStyle: 'hiddenInset', // Modern title bar style
+    show: false,
+    backgroundColor: '#1a1a1a', // Dark background for smooth loading
+    vibrancy: 'under-window', // macOS vibrancy effect
+    transparent: false,
+    frame: true,
+    resizable: true,
+    maximizable: true,
+    minimizable: true,
+    fullscreenable: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      enableRemoteModule: true
-    },
-    icon: path.join(__dirname, '../assets/icon.png'),
-    titleBarStyle: 'default',
-    show: false
+      enableRemoteModule: true,
+      webSecurity: false,
+      devTools: !app.isPackaged // Enable dev tools in development
+    }
   });
   
   // Set global reference for progress updates
