@@ -338,8 +338,15 @@ class SystemChecker {
       const versionResponse = await fetch(versionInfo.url);
       const versionData = await versionResponse.json();
       
+      if (!versionData.downloads || !versionData.downloads.server) {
+        throw new Error(`No server download available for version ${version}`);
+      }
+      
       const serverJarUrl = versionData.downloads.server.url;
       const jarPath = path.join(this.minecraftDir, `server-${version}.jar`);
+      
+      console.log(`Downloading from: ${serverJarUrl}`);
+      console.log(`Saving to: ${jarPath}`);
       
       // Download server jar
       await this.downloadFile(serverJarUrl, jarPath);
@@ -347,6 +354,7 @@ class SystemChecker {
       console.log(`Minecraft server ${version} downloaded successfully`);
       return { version, path: jarPath };
     } catch (error) {
+      console.error(`Download error for Minecraft ${version}:`, error);
       throw new Error(`Failed to download Minecraft ${version}: ${error.message}`);
     }
   }

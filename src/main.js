@@ -5,6 +5,7 @@ const { ServerManager } = require('./server/ServerManager');
 const { NetworkManager } = require('./network/NetworkManager');
 const { SystemChecker } = require('./utils/SystemChecker');
 const { logger } = require('./utils/Logger');
+const fs = require('fs/promises'); // Added for file system operations
 
 let mainWindow;
 let serverManager;
@@ -154,6 +155,14 @@ async function initializeManagers() {
     serverManager = new ServerManager(networkManager);
     await serverManager.initialize();
     logger.server('ServerManager initialized successfully');
+    
+    // Set up event listeners to forward server events to renderer
+    serverManager.on('server-update', (data) => {
+      logger.debug('Forwarding server-update to renderer', data);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('server-update', data);
+      }
+    });
     
     // Send initial status to renderer
     logger.info('Sending initial status to renderer');
@@ -331,6 +340,72 @@ ipcMain.handle('clear-logs', async () => {
     return { success: true };
   } catch (error) {
     logger.error('Failed to clear logs:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Get Minecraft server logs
+ipcMain.handle('get-server-logs', async (event, serverId, lines = 100) => {
+  try {
+    logger.debug('Getting server logs', { serverId, lines });
+    
+    if (!serverManager) {
+      return { success: false, error: 'Server manager not initialized' };
+    }
+    
+    const server = serverManager.activeServers.get(serverId);
+    if (!server) {
+      return { success: false, error: 'Server not found' };
+    }
+    
+    const logPath = path.join(server.directory, 'logs', 'latest.log');
+    const logContent = await fs.readFile(logPath, 'utf8');
+    const logLines = logContent.split('\n').filter(line => line.trim());
+    
+    return { 
+      success: true, 
+      logs: logLines.slice(-lines),
+      serverName: server.name,
+      serverId: server.id
+    };
+  } catch (error) {
+    logger.error('Failed to get server logs:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Get list of available server log files
+ipcMain.handle('get-server-log-files', async () => {
+  try {
+    logger.debug('Getting server log files');
+    
+    if (!serverManager) {
+      return { success: false, error: 'Server manager not initialized' };
+    }
+    
+    const serverLogs = [];
+    
+    for (const [serverId, server] of serverManager.activeServers) {
+      try {
+        const logPath = path.join(server.directory, 'logs', 'latest.log');
+        const stats = await fs.stat(logPath);
+        
+        serverLogs.push({
+          serverId: server.id,
+          serverName: server.name,
+          logPath: logPath,
+          lastModified: stats.mtime,
+          size: stats.size
+        });
+      } catch (error) {
+        // Server might not have logs yet
+        console.log(`No logs for server ${server.name}:`, error.message);
+      }
+    }
+    
+    return { success: true, serverLogs };
+  } catch (error) {
+    logger.error('Failed to get server log files:', error);
     return { success: false, error: error.message };
   }
 });

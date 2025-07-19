@@ -10,6 +10,9 @@ let userProfile = null;
 let currentLogs = [];
 let logFiles = [];
 let selectedLogFile = null;
+let currentLogType = 'app'; // 'app' or 'server'
+let serverLogs = [];
+let selectedServerLog = null;
 
 // DOM Elements
 const tabItems = document.querySelectorAll('.nav-item');
@@ -109,6 +112,7 @@ async function loadInitialData() {
 
         // Load server status
         serverStatus = await ipcRenderer.invoke('get-server-status');
+        console.log('Server status loaded:', serverStatus);
         updateServerStatus();
 
         // Load downloads data
@@ -767,15 +771,28 @@ async function saveProfile() {
 
 // Server functions
 async function startServer() {
-    const name = document.getElementById('server-name').value;
+    const name = document.getElementById('server-name').value.trim();
     const type = document.getElementById('server-type').value;
     const version = document.getElementById('server-version').value;
     const port = parseInt(document.getElementById('server-port').value);
     const maxPlayers = parseInt(document.getElementById('max-players-input').value);
     const autoStart = document.getElementById('auto-start-server').checked;
 
-    if (!name || !type || !version) {
-        showNotification('Please fill in all required fields', 'error');
+    console.log('Starting server with config:', { name, type, version, port, maxPlayers, autoStart });
+
+    // Validation
+    if (!name) {
+        showNotification('Please enter a server name', 'error');
+        return;
+    }
+    
+    if (!type) {
+        showNotification('Please select a server type', 'error');
+        return;
+    }
+    
+    if (!version) {
+        showNotification('Please select a server version', 'error');
         return;
     }
 
@@ -816,8 +833,6 @@ async function startServer() {
             currentStep++;
         }
     }, 800);
-
-    console.log('Starting server with config:', { name, type, version, port, maxPlayers, autoStart });
 
     try {
         const result = await ipcRenderer.invoke('start-server', {
@@ -957,19 +972,25 @@ function populateVersionDropdown() {
     versionSelect.innerHTML = '<option value="">Select version...</option>';
     
     const serverType = typeSelect.value;
+    console.log('Populating version dropdown for type:', serverType);
     
     // Get available versions from system status based on server type
     let availableVersions = [];
     let installedVersions = [];
     
     if (systemStatus) {
+        console.log('System status available:', systemStatus);
         if (serverType === 'vanilla' && systemStatus.checks.minecraft) {
             availableVersions = systemStatus.checks.minecraft.availableVersions || [];
             installedVersions = systemStatus.checks.minecraft.installedVersions || [];
+            console.log('Vanilla versions - Available:', availableVersions.length, 'Installed:', installedVersions.length);
         } else if (serverType === 'forge' && systemStatus.checks.forge) {
             availableVersions = systemStatus.checks.forge.availableVersions || [];
             installedVersions = systemStatus.checks.forge.installedVersions || [];
+            console.log('Forge versions - Available:', availableVersions.length, 'Installed:', installedVersions.length);
         }
+    } else {
+        console.log('System status not available, using defaults');
     }
     
     // Add installed versions first (they're more likely to work)
@@ -1004,6 +1025,7 @@ function populateVersionDropdown() {
     
     // If no versions are available, add some default options
     if (availableVersions.length === 0 && installedVersions.length === 0) {
+        console.log('No versions found, adding defaults');
         const defaultVersions = serverType === 'vanilla' 
             ? ['1.21.1', '1.20.4', '1.19.4', '1.18.2', '1.17.1']
             : ['1.20.1', '1.19.2', '1.18.2', '1.16.5', '1.15.2'];
@@ -1015,6 +1037,117 @@ function populateVersionDropdown() {
             versionSelect.appendChild(option);
         });
     }
+    
+    console.log('Version dropdown populated with', versionSelect.options.length - 1, 'options');
+}
+
+function updateServerLogsList() {
+    const serverLogsList = document.getElementById('server-logs-list');
+    
+    if (serverLogs.length === 0) {
+        serverLogsList.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: rgba(255, 255, 255, 0.7);">
+                <i class="fas fa-gamepad" style="font-size: 24px; margin-bottom: 10px;"></i>
+                <p>No server logs found</p>
+                <p>Start a server to see logs here</p>
+            </div>
+        `;
+        return;
+    }
+
+    const serverLogItems = serverLogs.map(serverLog => {
+        const isActive = selectedServerLog && selectedServerLog.serverId === serverLog.serverId;
+        const formattedDate = new Date(serverLog.lastModified).toLocaleString();
+        const sizeKB = Math.round(serverLog.size / 1024);
+        
+        return `
+            <div class="log-file-item ${isActive ? 'active' : ''}" onclick="selectServerLog('${serverLog.serverId}')">
+                <div class="log-file-name">${serverLog.serverName}</div>
+                <div class="log-file-date">${formattedDate}</div>
+                <div class="log-file-size">${sizeKB} KB</div>
+            </div>
+        `;
+    });
+
+    serverLogsList.innerHTML = serverLogItems.join('');
+}
+
+async function selectServerLog(serverId) {
+    selectedServerLog = serverLogs.find(log => log.serverId === serverId);
+    updateServerLogsList();
+    await loadServerLogContent();
+}
+
+async function loadServerLogContent() {
+    const serverLogsViewer = document.getElementById('server-logs-viewer');
+    serverLogsViewer.innerHTML = '<div class="loading-spinner"></div>';
+
+    try {
+        const result = await ipcRenderer.invoke('get-server-logs', selectedServerLog.serverId, 200);
+        if (result.success) {
+            currentLogs = result.logs;
+            displayServerLogs();
+        } else {
+            serverLogsViewer.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.7);">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px;"></i>
+                    <p>Failed to load server logs</p>
+                    <p>${result.error}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Failed to load server log content:', error);
+        serverLogsViewer.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.7);">
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px;"></i>
+                <p>Failed to load server logs</p>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function displayServerLogs() {
+    const serverLogsViewer = document.getElementById('server-logs-viewer');
+    const levelFilter = document.getElementById('log-level-filter').value;
+    
+    let filteredLogs = currentLogs;
+    if (levelFilter !== 'all') {
+        filteredLogs = currentLogs.filter(log => {
+            const logLevel = log.match(/\[.*?\]\s+(\w+)\s+/);
+            return logLevel && logLevel[1].toLowerCase() === levelFilter;
+        });
+    }
+
+    if (filteredLogs.length === 0) {
+        serverLogsViewer.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.7);">
+                <i class="fas fa-search" style="font-size: 48px; margin-bottom: 20px;"></i>
+                <p>No server logs found</p>
+                <p>Try changing the filter or refreshing</p>
+            </div>
+        `;
+        return;
+    }
+
+    const logEntries = filteredLogs.map(log => {
+        const match = log.match(/\[(.*?)\]\s+(\w+)\s+(.*)/);
+        if (!match) return `<div class="log-entry">${log}</div>`;
+
+        const [, timestamp, level, message] = match;
+        const levelLower = level.toLowerCase();
+        
+        return `
+            <div class="log-entry ${levelLower}">
+                <span class="log-timestamp">${timestamp}</span>
+                <span class="log-level">${level}</span>
+                <span class="log-message">${message}</span>
+            </div>
+        `;
+    });
+
+    serverLogsViewer.innerHTML = logEntries.join('');
 }
 
 function copyServerAddress(address) {
@@ -1026,6 +1159,7 @@ function copyServerAddress(address) {
 }
 
 function refreshStatus() {
+    console.log('refreshStatus called - reloading all data');
     loadInitialData();
 }
 
@@ -1101,6 +1235,7 @@ function getServerStatusClass(status) {
 
 function handleServerUpdate(update) {
     // Update server status when changes occur
+    console.log('Server update received:', update);
     refreshStatus();
 }
 
@@ -1155,24 +1290,56 @@ async function checkForUpdates() {
 // Logs functionality
 async function loadLogsData() {
     try {
-        // Load log files
-        const logFilesResult = await ipcRenderer.invoke('get-log-files');
-        if (logFilesResult.success) {
-            logFiles = logFilesResult.files;
-            updateLogFilesList();
-            
-            // Load the most recent log file by default
-            if (logFiles.length > 0) {
-                selectedLogFile = logFiles[logFiles.length - 1];
-                await loadLogContent();
+        if (currentLogType === 'app') {
+            // Load application log files
+            const logFilesResult = await ipcRenderer.invoke('get-log-files');
+            if (logFilesResult.success) {
+                logFiles = logFilesResult.files;
+                updateLogFilesList();
+                
+                // Load the most recent log file by default
+                if (logFiles.length > 0) {
+                    selectedLogFile = logFiles[logFiles.length - 1];
+                    await loadLogContent();
+                }
+            } else {
+                showNotification('Failed to load log files', 'error');
             }
-        } else {
-            showNotification('Failed to load log files', 'error');
+        } else if (currentLogType === 'server') {
+            // Load server log files
+            const serverLogsResult = await ipcRenderer.invoke('get-server-log-files');
+            if (serverLogsResult.success) {
+                serverLogs = serverLogsResult.serverLogs;
+                updateServerLogsList();
+                
+                // Load the first server log by default
+                if (serverLogs.length > 0) {
+                    selectedServerLog = serverLogs[0];
+                    await loadServerLogContent();
+                }
+            } else {
+                showNotification('Failed to load server log files', 'error');
+            }
         }
     } catch (error) {
         console.error('Failed to load logs data:', error);
         showNotification('Failed to load logs', 'error');
     }
+}
+
+function switchLogTab(logType) {
+    currentLogType = logType;
+    
+    // Update tab buttons
+    document.getElementById('app-logs-tab').classList.toggle('active', logType === 'app');
+    document.getElementById('server-logs-tab').classList.toggle('active', logType === 'server');
+    
+    // Show/hide content
+    document.getElementById('app-logs-content').style.display = logType === 'app' ? 'flex' : 'none';
+    document.getElementById('server-logs-content').style.display = logType === 'server' ? 'flex' : 'none';
+    
+    // Load appropriate data
+    loadLogsData();
 }
 
 function updateLogFilesList() {
@@ -1283,7 +1450,11 @@ function displayLogs() {
 }
 
 function filterLogs() {
-    displayLogs();
+    if (currentLogType === 'app') {
+        displayLogs();
+    } else if (currentLogType === 'server') {
+        displayServerLogs();
+    }
 }
 
 async function refreshLogs() {
@@ -1344,6 +1515,8 @@ window.refreshNetworkStatus = refreshNetworkStatus;
 window.showNetworkInfo = showNetworkInfo;
 window.showServerDetails = showServerDetails;
 window.selectLogFile = selectLogFile;
+window.selectServerLog = selectServerLog;
+window.switchLogTab = switchLogTab;
 window.filterLogs = filterLogs;
 window.refreshLogs = refreshLogs;
 window.clearLogs = clearLogs;

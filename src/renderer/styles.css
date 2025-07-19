@@ -703,6 +703,42 @@ body {
     color: #ffffff;
 }
 
+.logs-tabs {
+    display: flex;
+    gap: 10px;
+    margin-right: 20px;
+}
+
+.log-tab-btn {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.log-tab-btn:hover {
+    background: rgba(79, 195, 247, 0.1);
+    border-color: #4fc3f7;
+    color: #ffffff;
+}
+
+.log-tab-btn.active {
+    background: rgba(79, 195, 247, 0.2);
+    border-color: #4fc3f7;
+    color: #ffffff;
+}
+
+.log-tab-btn i {
+    font-size: 12px;
+}
+
 .logs-controls {
     display: flex;
     gap: 10px;
@@ -774,6 +810,12 @@ body {
 .log-file-date {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.7);
+}
+
+.log-file-size {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 2px;
 }
 
 .logs-main {
