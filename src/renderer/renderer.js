@@ -803,6 +803,17 @@ async function refreshDownloads() {
 
 async function refreshEntireApp() {
     console.log('=== REFRESHING ENTIRE APPLICATION ===');
+    
+    // Show visual refresh indicator on the top-right refresh button
+    const refreshButton = document.querySelector('.header-right .btn');
+    let originalText = '';
+    if (refreshButton) {
+        originalText = refreshButton.innerHTML;
+        refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        refreshButton.disabled = true;
+        refreshButton.title = 'Refreshing...';
+    }
+    
     showNotification('Refreshing all data...', 'info');
     
     try {
@@ -843,6 +854,13 @@ async function refreshEntireApp() {
     } catch (error) {
         console.error('Error refreshing application:', error);
         showNotification('Error refreshing data: ' + error.message, 'error');
+    } finally {
+        // Restore button state
+        if (refreshButton && originalText) {
+            refreshButton.innerHTML = originalText;
+            refreshButton.disabled = false;
+            refreshButton.title = 'Refresh all data';
+        }
     }
 }
 }
