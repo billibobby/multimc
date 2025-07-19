@@ -141,11 +141,50 @@ typings/
 # dotenv environment variables file
 .env
 
-# Electron
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# next.js build output
+.next
+
+# nuxt.js build output
+.nuxt
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# Electron specific
 dist/
+build/
 out/
 app/
-build/
+*.dmg
+*.exe
+*.deb
+*.rpm
+*.AppImage
+*.snap
+
+# MultiMC Hub specific
+.multimc-hub/
+*.log
+logs/
 
 # OS generated files
 .DS_Store
@@ -163,22 +202,7 @@ Thumbs.db
 *.swo
 *~
 
-# Application data
-.multimc-hub/
-
-# Minecraft server files
-*.jar
-*.zip
-*.tar.gz
-
-# Server logs
-logs/
-*.log
-
 # Backup files
 *.bak
 *.backup
-
-# Temporary files
-*.tmp
-*.temp 
+*.old 

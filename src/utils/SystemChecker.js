@@ -11,6 +11,11 @@ const { LoaderManager } = require('./LoaderManager');
 
 const pipelineAsync = promisify(pipeline);
 
+// Polyfill for fetch if not available (Node.js < 18)
+if (typeof fetch === 'undefined') {
+  global.fetch = require('node-fetch');
+}
+
 class SystemChecker {
   constructor() {
     this.baseDir = path.join(os.homedir(), '.multimc-hub');

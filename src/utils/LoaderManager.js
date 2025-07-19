@@ -10,11 +10,15 @@ const extract = require('extract-zip');
 
 const pipelineAsync = promisify(pipeline);
 
+// Polyfill for fetch if not available (Node.js < 18)
+if (typeof fetch === 'undefined') {
+  global.fetch = require('node-fetch');
+}
+
 class LoaderManager {
   constructor() {
     this.baseDir = path.join(os.homedir(), '.multimc-hub');
     this.loadersDir = path.join(this.baseDir, 'loaders');
-    this.ensureDirectories();
     
     // Define supported loaders
     this.supportedLoaders = {
@@ -33,7 +37,7 @@ class LoaderManager {
         color: '#FF6B35',
         supportsMods: true,
         versionFormat: 'minecraft-forge',
-        apiUrl: 'https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml',
+        apiUrl: 'https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml',
         downloadUrl: 'https://maven.minecraftforge.net/net/minecraftforge/forge/{version}/forge-{version}-installer.jar'
       },
       fabric: {
@@ -67,6 +71,8 @@ class LoaderManager {
         downloadUrl: 'https://maven.neoforged.net/releases/net/neoforged/neoforge/{version}/neoforge-{version}-installer.jar'
       }
     };
+    
+    this.ensureDirectories();
   }
 
   ensureDirectories() {
@@ -83,10 +89,22 @@ class LoaderManager {
     const results = {};
     
     for (const [loaderId, loaderInfo] of Object.entries(this.supportedLoaders)) {
-      if (loaderId === 'vanilla') {
-        results[loaderId] = await this.checkVanilla();
-      } else {
-        results[loaderId] = await this.checkLoader(loaderId, loaderInfo);
+      try {
+        console.log(`Checking ${loaderInfo.name} loader...`);
+        if (loaderId === 'vanilla') {
+          results[loaderId] = await this.checkVanilla();
+        } else {
+          results[loaderId] = await this.checkLoader(loaderId, loaderInfo);
+        }
+        console.log(`${loaderInfo.name} check completed:`, results[loaderId].status);
+      } catch (error) {
+        console.error(`Error checking ${loaderInfo.name}:`, error);
+        results[loaderId] = {
+          status: 'error',
+          message: `Error checking ${loaderInfo.name}: ${error.message}`,
+          availableVersions: [],
+          installedVersions: []
+        };
       }
     }
     
@@ -156,20 +174,29 @@ class LoaderManager {
 
   async getAvailableLoaderVersions(loaderId, loaderInfo) {
     try {
+      console.log(`Fetching available versions for ${loaderInfo.name}...`);
+      let versions;
       switch (loaderId) {
         case 'forge':
-          return await this.getAvailableForgeVersions(loaderInfo);
+          versions = await this.getAvailableForgeVersions(loaderInfo);
+          break;
         case 'fabric':
-          return await this.getAvailableFabricVersions(loaderInfo);
+          versions = await this.getAvailableFabricVersions(loaderInfo);
+          break;
         case 'quilt':
-          return await this.getAvailableQuiltVersions(loaderInfo);
+          versions = await this.getAvailableQuiltVersions(loaderInfo);
+          break;
         case 'neoforge':
-          return await this.getAvailableNeoForgeVersions(loaderInfo);
+          versions = await this.getAvailableNeoForgeVersions(loaderInfo);
+          break;
         default:
-          return [];
+          versions = [];
       }
+      console.log(`Found ${versions.length} available versions for ${loaderInfo.name}`);
+      return versions;
     } catch (error) {
       console.error(`Failed to fetch ${loaderInfo.name} versions:`, error);
+      console.log(`Using fallback versions for ${loaderInfo.name}`);
       return this.getFallbackVersions(loaderId);
     }
   }
@@ -242,9 +269,9 @@ class LoaderManager {
     const response = await fetch(loaderInfo.apiUrl);
     const data = await response.json();
     
-    // Get loader versions
+    // Get loader versions (filter out beta versions)
     const loaderVersions = data
-      .filter(v => v.stable)
+      .filter(v => !v.version.includes('beta') && !v.version.includes('alpha'))
       .slice(0, 10)
       .map(v => v.version);
     
@@ -277,29 +304,49 @@ class LoaderManager {
     const versions = versionMatches
       .map(match => match.replace(/<\/?version>/g, ''))
       .filter(version => {
-        const mcVersion = version.split('-')[0];
-        return ['1.21.1', '1.20.4', '1.20.1', '1.19.4', '1.19.2', '1.18.2'].includes(mcVersion);
+        // NeoForge uses format like "20.2.3-beta" where 20.2 corresponds to Minecraft 1.20.2
+        const parts = version.split('.');
+        if (parts.length >= 2) {
+          const major = parseInt(parts[0]);
+          const minor = parseInt(parts[1]);
+          // Map NeoForge version to Minecraft version (20.2 = 1.20.2)
+          const mcVersion = `1.${major}.${minor}`;
+          return ['1.21.1', '1.20.4', '1.20.1', '1.19.4', '1.19.2', '1.18.2'].includes(mcVersion);
+        }
+        return false;
       })
       .sort((a, b) => {
-        const aParts = a.split('-');
-        const bParts = b.split('-');
-        const aMC = aParts[0];
-        const bMC = bParts[0];
+        const aParts = a.split('.');
+        const bParts = b.split('.');
+        const aMajor = parseInt(aParts[0]);
+        const bMajor = parseInt(bParts[0]);
+        const aMinor = parseInt(aParts[1]);
+        const bMinor = parseInt(bParts[1]);
         
-        if (aMC !== bMC) {
-          return bMC.localeCompare(aMC);
+        if (aMajor !== bMajor) {
+          return bMajor - aMajor;
+        }
+        
+        if (aMinor !== bMinor) {
+          return bMinor - aMinor;
         }
         
         return b.localeCompare(a);
       });
     
-    return versions.slice(0, 15).map(version => ({
-      id: version,
-      minecraftVersion: version.split('-')[0],
-      loaderVersion: version.split('-')[1] || version,
-      type: 'release',
-      releaseTime: new Date().toISOString()
-    }));
+    return versions.slice(0, 15).map(version => {
+      const parts = version.split('.');
+      const major = parseInt(parts[0]);
+      const minor = parseInt(parts[1]);
+      const mcVersion = `1.${major}.${minor}`;
+      return {
+        id: version,
+        minecraftVersion: mcVersion,
+        loaderVersion: version,
+        type: 'release',
+        releaseTime: new Date().toISOString()
+      };
+    });
   }
 
   getFallbackVersions(loaderId) {
@@ -405,26 +452,98 @@ class LoaderManager {
       throw new Error(`Invalid Fabric version format: ${version}. Expected format: MCVERSION-LOADERVERSION`);
     }
     
+    console.log(`Downloading Fabric server ${version}...`);
+    
     // Download Minecraft server first
     const minecraftDir = path.join(this.baseDir, 'minecraft');
     const minecraftJarPath = path.join(minecraftDir, `server-${minecraftVersion}.jar`);
     
     if (!await fs.pathExists(minecraftJarPath)) {
+      console.log(`Downloading Minecraft server ${minecraftVersion}...`);
       await this.downloadMinecraft(minecraftVersion);
     }
     
-    // Download Fabric loader
-    const loaderUrl = loaderInfo.downloadUrl.replace('{loader}', loaderVersion);
-    const loaderPath = path.join(this.loadersDir, 'fabric', `fabric-loader-${loaderVersion}.jar`);
+    // Get the latest stable Fabric installer
+    const installerResponse = await fetch('https://meta.fabricmc.net/v2/versions/installer');
+    const installers = await installerResponse.json();
+    const stableInstaller = installers.find(installer => installer.stable);
     
-    console.log(`Downloading Fabric loader from: ${loaderUrl}`);
-    await this.downloadFile(loaderUrl, loaderPath);
+    if (!stableInstaller) {
+      throw new Error('No stable Fabric installer found');
+    }
     
-    // Create Fabric server JAR (this is a simplified approach)
-    const serverJarPath = path.join(this.loadersDir, 'fabric', `fabric-${version}.jar`);
+    // Download Fabric installer
+    const installerPath = path.join(this.loadersDir, 'fabric', `fabric-installer-${stableInstaller.version}.jar`);
+    console.log(`Downloading Fabric installer from: ${stableInstaller.url}`);
+    await this.downloadFile(stableInstaller.url, installerPath);
+    
+    // Create server directory
+    const serverDir = path.join(this.loadersDir, 'fabric', `fabric-${version}`);
+    await fs.ensureDir(serverDir);
+    
+    // Copy Minecraft server JAR to server directory
+    const serverJarPath = path.join(serverDir, `server-${minecraftVersion}.jar`);
     await fs.copy(minecraftJarPath, serverJarPath);
     
-    return { version, path: serverJarPath, minecraftVersion, loaderVersion };
+    // Run Fabric installer to create server
+    const { spawn } = require('child_process');
+    const javaPath = await this.getJavaPath();
+    
+    if (!javaPath) {
+      throw new Error('Java not found. Please install Java to create Fabric servers.');
+    }
+    
+    return new Promise((resolve, reject) => {
+      const installerProcess = spawn(javaPath, [
+        '-jar', installerPath,
+        'server',
+        '-mcversion', minecraftVersion,
+        '-loader', loaderVersion,
+        '-dir', serverDir
+      ], { cwd: serverDir });
+      
+      let output = '';
+      let errorOutput = '';
+      
+      installerProcess.stdout.on('data', (data) => {
+        output += data.toString();
+        console.log('Fabric installer:', data.toString());
+      });
+      
+      installerProcess.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+        console.error('Fabric installer error:', data.toString());
+      });
+      
+      installerProcess.on('close', (code) => {
+        if (code === 0) {
+          console.log(`Fabric server ${version} created successfully`);
+          
+          // Find the generated server JAR
+          const files = fs.readdirSync(serverDir);
+          const serverJar = files.find(file => file.includes('fabric-server') && file.endsWith('.jar'));
+          
+          if (serverJar) {
+            const finalServerJarPath = path.join(serverDir, serverJar);
+            resolve({
+              version,
+              path: finalServerJarPath,
+              minecraftVersion,
+              loaderVersion,
+              serverDir: serverDir
+            });
+          } else {
+            reject(new Error('Fabric server JAR not found after installation'));
+          }
+        } else {
+          reject(new Error(`Fabric installer failed with code ${code}: ${errorOutput}`));
+        }
+      });
+      
+      installerProcess.on('error', (error) => {
+        reject(new Error(`Failed to run Fabric installer: ${error.message}`));
+      });
+    });
   }
 
   async downloadQuilt(version, loaderInfo) {
@@ -609,6 +728,20 @@ class LoaderManager {
 
   getSupportedLoaders() {
     return this.supportedLoaders;
+  }
+
+  async getJavaPath() {
+    return new Promise((resolve) => {
+      const { exec } = require('child_process');
+      const command = process.platform === 'win32' ? 'where java' : 'which java';
+      exec(command, (error, stdout) => {
+        if (error) {
+          resolve(null);
+        } else {
+          resolve(stdout.trim());
+        }
+      });
+    });
   }
 }
 

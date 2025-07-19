@@ -45,6 +45,7 @@ function initializeApp() {
 function setupEventListeners() {
     // Listen for IPC messages from main process
     ipcRenderer.on('system-status', (event, status) => {
+        console.log('Received system status:', status);
         systemStatus = status;
         updateSystemStatus();
     });
@@ -86,14 +87,13 @@ function setupEventListeners() {
     });
     
     // Add event listener for server type change
-    document.addEventListener('DOMContentLoaded', () => {
-        const typeSelect = document.getElementById('server-type');
-        if (typeSelect) {
-            typeSelect.addEventListener('change', () => {
-                populateVersionDropdown();
-            });
-        }
-    });
+    const typeSelect = document.getElementById('server-type');
+    if (typeSelect) {
+        typeSelect.addEventListener('change', async () => {
+            console.log('Server type changed to:', typeSelect.value);
+            await populateVersionDropdown();
+        });
+    }
 }
 
 async function loadInitialData() {
@@ -103,6 +103,7 @@ async function loadInitialData() {
 
         // Load system status
         systemStatus = await ipcRenderer.invoke('get-system-status');
+        console.log('Loaded system status:', systemStatus);
         updateSystemStatus();
 
         // Load network status
@@ -286,7 +287,19 @@ function updateSystemStatus() {
         `);
     });
 
-    content.innerHTML = statusItems.join('');
+    content.innerHTML = statusItems.join('') + `
+        <div class="status-item">
+            <div class="status-label">
+                <i class="fas fa-bug"></i>
+                Debug
+            </div>
+            <div class="status-value">
+                <button class="btn btn-sm btn-secondary" onclick="debugSystemStatus()">
+                    <i class="fas fa-terminal"></i> Debug Status
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 function updateNetworkStatus() {
@@ -539,13 +552,14 @@ function loadNetworkData() {
 
 async function loadDownloadsData() {
     try {
+        console.log('Loading downloads data, systemStatus:', systemStatus);
         if (!systemStatus) {
             showNotification('System status not available', 'error');
             return;
         }
 
         // Load versions for each loader
-        const loaders = ['minecraft', 'forge', 'fabric', 'quilt', 'neoforge'];
+        const loaders = ['vanilla', 'forge', 'fabric', 'quilt', 'neoforge'];
         
         for (const loader of loaders) {
             const container = document.getElementById(`${loader}-versions`);
@@ -624,17 +638,54 @@ async function showStartServerModal() {
     const modal = document.getElementById('start-server-modal');
     modal.classList.add('active');
     
+    // Show loading state
+    const versionSelect = document.getElementById('server-version');
+    versionSelect.innerHTML = '<option value="">Loading versions...</option>';
+    
     // Always refresh system status to get latest version data
     try {
+        console.log('Refreshing system status...');
         systemStatus = await ipcRenderer.invoke('get-system-status');
         console.log('System status refreshed:', systemStatus);
+        console.log('Available checks:', Object.keys(systemStatus.checks));
+        
+        // Debug each loader type with full data
+        ['vanilla', 'forge', 'fabric', 'quilt', 'neoforge'].forEach(loader => {
+            if (systemStatus.checks[loader]) {
+                const loaderData = systemStatus.checks[loader];
+                console.log(`${loader} data:`, {
+                    status: loaderData.status,
+                    availableVersions: loaderData.availableVersions?.length || 0,
+                    installedVersions: loaderData.installedVersions?.length || 0,
+                    message: loaderData.message
+                });
+                
+                // Log sample versions
+                if (loaderData.availableVersions && loaderData.availableVersions.length > 0) {
+                    console.log(`${loader} sample available versions:`, 
+                        loaderData.availableVersions.slice(0, 3).map(v => v.id || v));
+                }
+                if (loaderData.installedVersions && loaderData.installedVersions.length > 0) {
+                    console.log(`${loader} installed versions:`, loaderData.installedVersions);
+                }
+            } else {
+                console.log(`${loader} data not found`);
+            }
+        });
+        
+        if (systemStatus.checks.fabric) {
+            console.log('Fabric full data:', systemStatus.checks.fabric);
+        }
     } catch (error) {
         console.error('Failed to load system status:', error);
         showNotification('Failed to load system status', 'error');
+        versionSelect.innerHTML = '<option value="">Error loading versions</option>';
+        return;
     }
     
     // Populate version dropdown
-    populateVersionDropdown();
+    console.log('About to populate version dropdown, systemStatus:', systemStatus);
+    await populateVersionDropdown();
 }
 
 function showDownloadModal() {
@@ -1123,9 +1174,14 @@ async function downloadForge(version) {
 }
 
 // Utility functions
-function populateVersionDropdown() {
+async function populateVersionDropdown() {
     const versionSelect = document.getElementById('server-version');
     const typeSelect = document.getElementById('server-type');
+    
+    if (!versionSelect || !typeSelect) {
+        console.error('Required elements not found for version dropdown');
+        return;
+    }
     
     versionSelect.innerHTML = '<option value="">Select version...</option>';
     
@@ -1136,15 +1192,39 @@ function populateVersionDropdown() {
     let availableVersions = [];
     let installedVersions = [];
     
-    if (systemStatus) {
+    if (systemStatus && systemStatus.checks) {
         console.log('System status available:', systemStatus);
-        if (systemStatus.checks[serverType]) {
-            availableVersions = systemStatus.checks[serverType].availableVersions || [];
-            installedVersions = systemStatus.checks[serverType].installedVersions || [];
+        console.log('Available checks:', Object.keys(systemStatus.checks));
+        
+        const loaderData = systemStatus.checks[serverType];
+        if (loaderData) {
+            availableVersions = loaderData.availableVersions || [];
+            installedVersions = loaderData.installedVersions || [];
             console.log(`${serverType} versions - Available:`, availableVersions.length, 'Installed:', installedVersions.length);
+            console.log('Available versions:', availableVersions);
+            console.log('Installed versions:', installedVersions);
+        } else {
+            console.log(`No data found for server type: ${serverType}`);
+            console.log('Available loader types:', Object.keys(systemStatus.checks));
         }
     } else {
-        console.log('System status not available, using defaults');
+        console.log('System status not available or missing checks property');
+        console.log('System status:', systemStatus);
+        
+        // Try to refresh system status if not available
+        try {
+            console.log('Attempting to refresh system status...');
+            systemStatus = await ipcRenderer.invoke('get-system-status');
+            console.log('System status refreshed:', systemStatus);
+            
+            if (systemStatus && systemStatus.checks && systemStatus.checks[serverType]) {
+                availableVersions = systemStatus.checks[serverType].availableVersions || [];
+                installedVersions = systemStatus.checks[serverType].installedVersions || [];
+                console.log(`${serverType} versions after refresh - Available:`, availableVersions.length, 'Installed:', installedVersions.length);
+            }
+        } catch (error) {
+            console.error('Failed to refresh system status:', error);
+        }
     }
     
     // Add installed versions first (they're more likely to work)
@@ -1309,6 +1389,61 @@ function refreshStatus() {
     loadInitialData();
 }
 
+async function debugSystemStatus() {
+    console.log('=== DEBUG SYSTEM STATUS ===');
+    console.log('Current systemStatus:', systemStatus);
+    
+    if (systemStatus && systemStatus.checks) {
+        console.log('Available checks:', Object.keys(systemStatus.checks));
+        
+        ['vanilla', 'forge', 'fabric', 'quilt', 'neoforge'].forEach(loader => {
+            if (systemStatus.checks[loader]) {
+                const loaderData = systemStatus.checks[loader];
+                console.log(`\n${loader.toUpperCase()} DEBUG:`);
+                console.log('  Status:', loaderData.status);
+                console.log('  Message:', loaderData.message);
+                console.log('  Available versions count:', loaderData.availableVersions?.length || 0);
+                console.log('  Installed versions count:', loaderData.installedVersions?.length || 0);
+                
+                if (loaderData.availableVersions && loaderData.availableVersions.length > 0) {
+                    console.log('  Sample available versions:', 
+                        loaderData.availableVersions.slice(0, 5).map(v => v.id || v));
+                }
+                
+                if (loaderData.installedVersions && loaderData.installedVersions.length > 0) {
+                    console.log('  Installed versions:', loaderData.installedVersions);
+                }
+            } else {
+                console.log(`\n${loader.toUpperCase()}: NOT FOUND`);
+            }
+        });
+    } else {
+        console.log('No system status available');
+    }
+    
+    // Test version dropdown population
+    console.log('\n=== TESTING VERSION DROPDOWN ===');
+    const typeSelect = document.getElementById('server-type');
+    const versionSelect = document.getElementById('server-version');
+    
+    if (typeSelect && versionSelect) {
+        console.log('Current server type:', typeSelect.value);
+        console.log('Version select options:', versionSelect.options.length);
+        
+        // Test with each server type
+        ['vanilla', 'forge', 'fabric', 'quilt', 'neoforge'].forEach(async (serverType) => {
+            typeSelect.value = serverType;
+            console.log(`\nTesting ${serverType} dropdown population...`);
+            await populateVersionDropdown();
+            console.log(`${serverType} dropdown options:`, versionSelect.options.length);
+        });
+    } else {
+        console.log('Required elements not found');
+    }
+    
+    showNotification('Debug info logged to console', 'info');
+}
+
 function refreshNetworkStatus() {
     loadNetworkData();
 }
@@ -1341,10 +1476,24 @@ function getStatusIcon(status) {
 
 function getStatusText(check) {
     if (check.status === 'ok') {
+        // For loaders, show version counts
+        if (check.availableVersions && check.installedVersions) {
+            const availableCount = check.availableVersions.length;
+            const installedCount = check.installedVersions.length;
+            if (installedCount > 0) {
+                return `${installedCount} installed, ${availableCount} available`;
+            } else {
+                return `${availableCount} available`;
+            }
+        }
         return check.version || check.message || 'OK';
     } else if (check.status === 'error') {
         return check.message || 'Error';
     } else {
+        // For missing loaders, show available count if available
+        if (check.availableVersions && check.availableVersions.length > 0) {
+            return `${check.availableVersions.length} available - ${check.message || 'Not installed'}`;
+        }
         return check.message || 'Warning';
     }
 }

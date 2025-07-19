@@ -1,192 +1,214 @@
-# MultiMC Hub 🎮
+# MultiMC Hub
 
-**A user-friendly Minecraft server management hub for hosting and transferring servers between friends**
+A modern, cross-platform Minecraft server management application built with Electron. MultiMC Hub allows you to easily create, manage, and host Minecraft servers with support for multiple server types including Vanilla, Forge, Fabric, Quilt, and NeoForge.
 
-MultiMC Hub makes it easy to host, manage, and transfer Minecraft servers without any technical knowledge. Perfect for friends who want to play together!
+## Features
 
-## ✨ Features
+### 🚀 Server Management
+- **Multiple Server Types**: Support for Vanilla, Forge, Fabric, Quilt, and NeoForge servers
+- **Easy Server Creation**: Simple wizard to create new servers with automatic version detection
+- **Server Monitoring**: Real-time status monitoring and log viewing
+- **Mod Management**: Upload and manage mods for modded servers
+- **Auto-start**: Configure servers to start automatically when the application launches
 
-- **Easy Server Hosting**: Start Minecraft servers with just a few clicks
-- **Network Discovery**: Automatically find and connect to friends' servers
-- **Server Transfer**: Seamlessly transfer server hosting between friends
-- **Auto-Updates**: Automatically checks for and installs updates
-- **Cross-Platform**: Works on Windows, macOS, and Linux
-- **User-Friendly**: No terminal knowledge required!
+### 🌐 Network Features
+- **Peer Discovery**: Automatically discover other MultiMC Hub users on your network
+- **Server Sharing**: Share your servers with other users on the network
+- **Host Takeover**: Take over hosting of servers from other users
+- **Real-time Updates**: Live updates of server and network status
 
-## 🚀 Quick Start
+### 📦 Version Management
+- **Automatic Downloads**: Download Minecraft and mod loader versions automatically
+- **Version Detection**: Automatically detect available and installed versions
+- **Multiple Versions**: Support for multiple Minecraft versions and mod loaders
+- **Offline Support**: Work with locally installed versions
 
-### For Windows Users:
+### 🛠️ System Integration
+- **Cross-platform**: Works on Windows, macOS, and Linux
+- **Java Detection**: Automatic Java version detection and validation
+- **System Monitoring**: Monitor system resources and requirements
+- **Log Management**: Comprehensive logging and debugging tools
 
-1. **Download** the MultiMC Hub files
-2. **Double-click** `install.bat` to run the installer
-3. **Follow** the installation wizard
-4. **Double-click** the "MultiMC Hub" shortcut on your desktop
-5. **Enjoy** your Minecraft server!
+## Installation
 
-### For macOS Users:
+### Prerequisites
+- **Node.js** (v16 or higher)
+- **Java** (v8 or higher)
+- **Git** (for updates)
 
-1. **Download** the MultiMC Hub files
-2. **Double-click** `install.sh` to run the installer
-3. **Follow** the installation wizard
-4. **Double-click** the "MultiMC Hub" shortcut on your desktop
-5. **Enjoy** your Minecraft server!
+### Quick Start
 
-### For Linux Users:
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/multimc-hub.git
+   cd multimc-hub
+   ```
 
-1. **Download** the MultiMC Hub files
-2. **Open terminal** in the MultiMC Hub folder
-3. **Run**: `chmod +x install.sh && ./install.sh`
-4. **Follow** the installation wizard
-5. **Run**: `./start.sh`
-6. **Enjoy** your Minecraft server!
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-## 📋 System Requirements
+3. **Start the application**
+   ```bash
+   npm start
+   ```
 
-- **Operating System**: Windows 10+, macOS 10.14+, or Linux
-- **Memory**: 4GB RAM minimum (8GB recommended)
-- **Storage**: 2GB free space
-- **Internet**: Required for updates and multiplayer
+### Platform-Specific Installation
 
-## 🎯 How It Works
+#### Windows
+1. Download and install [Node.js](https://nodejs.org/)
+2. Download and install [Java](https://adoptium.net/)
+3. Run `start.bat` or use the commands above
 
-### Starting a Server
+#### macOS
+1. Install [Homebrew](https://brew.sh/) (if not already installed)
+2. Install Node.js: `brew install node`
+3. Install Java: `brew install --cask temurin`
+4. Run `start.sh` or use the commands above
 
-1. **Open** MultiMC Hub
-2. **Click** "Start New Server"
-3. **Choose** server type (Vanilla or Forge)
-4. **Select** Minecraft version
-5. **Set** server name and settings
-6. **Click** "Start Server"
+#### Linux
+1. Install Node.js and Java using your package manager
+2. Run `start.sh` or use the commands above
 
-The application will automatically:
-- Download the required server files
-- Install Java if needed
-- Start your server
-- Show you the connection details
+## Usage
 
-### Connecting to Friends
+### Creating Your First Server
 
-1. **Open** MultiMC Hub
-2. **Go** to the Network tab
-3. **See** your friends' servers automatically
-4. **Click** on a server to join
+1. **Launch MultiMC Hub**
+2. **Click "Start New Server"** on the Dashboard
+3. **Choose Server Type**:
+   - **Vanilla**: Official Minecraft server (no mods)
+   - **Forge**: Popular mod loader with extensive mod support
+   - **Fabric**: Lightweight mod loader with modern features
+   - **Quilt**: Fork of Fabric with additional features
+   - **NeoForge**: Modern fork of Forge
+4. **Select Version**: Choose from available versions
+5. **Configure Settings**: Set server name, port, and max players
+6. **Start Server**: Click "Start Server" to launch
 
-### Transferring Server Hosting
+### Managing Servers
 
-1. **Right-click** on a server in the list
-2. **Select** "Transfer Host"
-3. **Choose** the new host
-4. **Server** transfers automatically
-
-## 🔧 Advanced Features
-
-### Auto-Updates
-
-MultiMC Hub automatically checks for updates and notifies you when new versions are available. You can also manually check for updates in the Settings tab.
-
-### Server Management
-
-- **Start/Stop** servers with one click
-- **Monitor** server performance
-- **View** server logs
-- **Configure** server settings
+- **View Status**: See real-time server status on the Dashboard
+- **View Logs**: Access server logs for debugging
+- **Manage Mods**: Upload and manage mods for modded servers
+- **Network Sharing**: Share servers with other users on your network
 
 ### Network Features
 
-- **Automatic** peer discovery
-- **Real-time** status updates
-- **Secure** communication
-- **Profile** management
+- **Discover Peers**: Automatically find other MultiMC Hub users
+- **Join Servers**: Connect to servers hosted by other users
+- **Take Over Hosting**: Take over hosting of servers from other users
 
-## 🛠️ Troubleshooting
+## Configuration
+
+### Server Settings
+- **Port**: Default 25565 (can be changed)
+- **Max Players**: Default 20 (configurable)
+- **Auto-start**: Enable to start servers automatically
+- **Memory**: Configure server memory allocation
+
+### Network Settings
+- **Discovery Port**: Default 3001 (auto-adjusted if in use)
+- **Communication Port**: Default 3002 (auto-adjusted if in use)
+- **Web Interface**: Default 3003 (auto-adjusted if in use)
+
+## Troubleshooting
 
 ### Common Issues
 
-**"Node.js is not installed"**
-- Run the installer again
-- Or manually install Node.js from https://nodejs.org/
+#### Port Conflicts
+If you see "port in use" errors, MultiMC Hub will automatically try alternative ports. This is normal and the application will work fine.
 
-**"Java not found"**
-- MultiMC Hub will automatically download Java
-- Or install Java manually from https://adoptium.net/
+#### Java Not Found
+1. Ensure Java is installed and in your PATH
+2. Restart MultiMC Hub after installing Java
+3. Check the System Status panel for Java detection
 
-**"Server won't start"**
-- Check that the port isn't already in use
-- Ensure you have enough RAM
-- Try a different Minecraft version
+#### Server Won't Start
+1. Check the server logs for error messages
+2. Ensure you have sufficient memory available
+3. Verify the selected version is compatible with your Java version
 
-**"Can't connect to friends"**
-- Check your firewall settings
-- Ensure both users are on the same network
-- Try restarting the application
+#### Network Issues
+1. Check your firewall settings
+2. Ensure ports 3001-3004 are not blocked
+3. Try restarting the application
 
-### Getting Help
+### Debug Mode
+Click the "Debug Status" button in the System Status panel to get detailed information about:
+- System status and detected components
+- Available and installed versions
+- Network connectivity
+- Server status
 
-If you encounter any issues:
+## Development
 
-1. **Check** the logs in the Logs tab
-2. **Restart** the application
-3. **Run** the installer again
-4. **Contact** support with the error details
-
-## 📁 File Structure
-
+### Project Structure
 ```
 multimc/
-├── install.bat          # Windows installer
-├── install.sh           # macOS/Linux installer
-├── start.bat            # Windows launcher
-├── start.sh             # macOS/Linux launcher
-├── package.json         # Application configuration
-├── src/                 # Source code
-│   ├── main.js         # Main application
-│   ├── renderer/       # User interface
-│   ├── server/         # Server management
-│   ├── network/        # Network features
-│   └── utils/          # Utilities
-└── assets/             # Application assets
+├── src/
+│   ├── main.js              # Main Electron process
+│   ├── renderer/            # Renderer process (UI)
+│   ├── server/              # Server management
+│   ├── network/             # Network functionality
+│   └── utils/               # Utility functions
+├── assets/                  # Application assets
+├── start.bat               # Windows launcher
+├── start.sh                # Unix launcher
+└── package.json            # Project configuration
 ```
 
-## 🔄 Updates
+### Building
+```bash
+# Install dependencies
+npm install
 
-MultiMC Hub automatically checks for updates and will notify you when new versions are available. Updates include:
+# Build for development
+npm run dev
 
-- **Bug fixes** and improvements
-- **New features** and capabilities
-- **Security** updates
-- **Performance** enhancements
+# Build for production
+npm run build
 
-## 🤝 Contributing
+# Package for distribution
+npm run package
+```
 
-Want to help improve MultiMC Hub?
+### Contributing
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-1. **Fork** the repository
-2. **Create** a feature branch
-3. **Make** your changes
-4. **Test** thoroughly
-5. **Submit** a pull request
+## License
 
-## 📄 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## Support
 
-## 🙏 Acknowledgments
+- **Issues**: Report bugs and request features on [GitHub Issues](https://github.com/yourusername/multimc-hub/issues)
+- **Discussions**: Join discussions on [GitHub Discussions](https://github.com/yourusername/multimc-hub/discussions)
+- **Wiki**: Check the [Wiki](https://github.com/yourusername/multimc-hub/wiki) for detailed documentation
 
-- **Mojang** for Minecraft
-- **Electron** team for the framework
-- **Node.js** community for the runtime
-- **All contributors** who help improve MultiMC Hub
+## Changelog
 
-## 📞 Support
+### Version 1.0.0
+- Initial release
+- Support for Vanilla, Forge, Fabric, Quilt, and NeoForge servers
+- Network peer discovery and server sharing
+- Automatic version detection and downloads
+- Cross-platform support (Windows, macOS, Linux)
+- Real-time server monitoring and log viewing
+- Mod management for modded servers
+- System status monitoring and validation
 
-Need help? Here's how to get support:
+## Acknowledgments
 
-- **GitHub Issues**: Report bugs and request features
-- **Discord**: Join our community server
-- **Email**: Contact us directly
-
----
-
-**Made with ❤️ for the Minecraft community**
-
-*MultiMC Hub - Making Minecraft server hosting easy for everyone!* 
+- **Minecraft**: Mojang Studios for Minecraft
+- **Forge**: Minecraft Forge team
+- **Fabric**: Fabric team
+- **Quilt**: Quilt team
+- **NeoForge**: NeoForge team
+- **Electron**: Electron team for the framework
+- **Node.js**: Node.js team for the runtime 

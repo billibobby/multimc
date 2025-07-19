@@ -60,10 +60,21 @@ function createWindow() {
 // Auto-updater functions
 function checkForUpdates() {
   logger.info('Checking for updates...');
-  autoUpdater.checkForUpdates();
+  // Only check for updates if the app is packaged (not in development)
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdates();
+  } else {
+    logger.info('Skip checkForUpdates because application is not packed and dev update config is not forced');
+  }
 }
 
 function setupAutoUpdater() {
+  // Only setup auto-updater if the app is packaged
+  if (!app.isPackaged) {
+    logger.info('Auto-updater disabled in development mode');
+    return;
+  }
+  
   autoUpdater.on('checking-for-update', () => {
     logger.info('Checking for update...');
     mainWindow.webContents.send('update-status', { status: 'checking' });
@@ -172,7 +183,11 @@ async function initializeManagers() {
     
     logger.info('All managers initialized successfully');
   } catch (error) {
-    logger.error('Failed to initialize managers:', error);
+    logger.error('Failed to initialize managers:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     mainWindow.webContents.send('error', 'Failed to initialize application');
   }
 }
