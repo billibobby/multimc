@@ -533,6 +533,8 @@ class LoaderManager {
             !file.includes('.') && file.startsWith('fabric-')
           );
           
+          console.log(`Found fabric directories:`, fabricDirs);
+          
           // Check each directory for server files
           for (const dir of fabricDirs) {
             const versionMatch = dir.match(/fabric-(.+)/);
@@ -542,16 +544,20 @@ class LoaderManager {
               
               try {
                 const dirFiles = await fs.readdir(dirPath);
-                // Check if directory contains server files
+                console.log(`Files in ${dir}:`, dirFiles);
+                
+                // Check if directory contains any server files (more flexible)
                 const hasServerJar = dirFiles.some(file => 
-                  file === 'server-1.20.1.jar' || 
-                  file === 'server-1.19.4.jar' || 
-                  file === 'server-1.20.4.jar' ||
-                  file.includes('fabric-server')
+                  file.includes('server') || 
+                  file.includes('fabric-server') ||
+                  file.endsWith('.jar')
                 );
                 
                 if (hasServerJar) {
                   installedVersions.push(version);
+                  console.log(`✅ Found server files in ${dir}, adding version ${version}`);
+                } else {
+                  console.log(`❌ No server files found in ${dir}`);
                 }
               } catch (error) {
                 console.error(`Error checking fabric directory ${dir}:`, error);

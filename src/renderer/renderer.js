@@ -703,7 +703,7 @@ async function loadDownloadsData() {
             
             // Show installed versions first
             if (installedVersions.length > 0) {
-                html += '<div class="version-group"><h4>Installed (${installedVersions.length})</h4>';
+                html += `<div class="version-group"><h4>INSTALLED (${installedVersions.length})</h4>`;
                 installedVersions.forEach(version => {
                     html += `
                         <div class="version-item installed">
@@ -717,7 +717,7 @@ async function loadDownloadsData() {
             
             // Show available versions
             if (availableVersions.length > 0) {
-                html += '<div class="version-group"><h4>Available (${availableVersions.length})</h4>';
+                html += `<div class="version-group"><h4>AVAILABLE (${availableVersions.length})</h4>`;
                 availableVersions.forEach(version => {
                     const versionId = version.id || version;
                     const versionName = version.minecraftVersion ? `${version.minecraftVersion}-${version.loaderVersion || versionId}` : versionId;
@@ -2246,11 +2246,16 @@ async function downloadVersion(loader, version, event) {
             showNotification(`${loader} ${version} downloaded successfully!`, 'success');
             console.log(`Successfully downloaded ${loader} ${version}`);
             
+            // Force refresh system status to get latest installed versions
+            console.log('Refreshing system status after download...');
+            systemStatus = await ipcRenderer.invoke('get-system-status');
+            console.log('Updated system status:', systemStatus);
+            
             // Refresh the downloads section to show installed status
             await loadDownloadsData();
             
-            // Refresh system status to update "missing" status
-            await updateSystemStatus();
+            // Also refresh the entire app to ensure everything is updated
+            await refreshEntireApp();
             
         } else {
             throw new Error(result.error || 'Download failed');
