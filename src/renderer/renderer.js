@@ -803,15 +803,20 @@ async function refreshDownloads() {
 
 async function refreshEntireApp() {
     console.log('=== REFRESHING ENTIRE APPLICATION ===');
+    console.log('refreshEntireApp function called!');
     
     // Show visual refresh indicator on the top-right refresh button
-    const refreshButton = document.querySelector('.header-right .btn');
+    const refreshButton = document.querySelector('.header-right .btn[onclick="refreshEntireApp()"]');
+    console.log('Found refresh button:', refreshButton);
     let originalText = '';
     if (refreshButton) {
         originalText = refreshButton.innerHTML;
         refreshButton.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i>';
         refreshButton.disabled = true;
         refreshButton.title = 'Refreshing...';
+        console.log('Updated refresh button with spinning icon');
+    } else {
+        console.log('Refresh button not found! Available buttons:', document.querySelectorAll('.header-right .btn'));
     }
     
     showNotification('Refreshing all data...', 'info');
@@ -860,6 +865,7 @@ async function refreshEntireApp() {
             refreshButton.innerHTML = originalText;
             refreshButton.disabled = false;
             refreshButton.title = 'Refresh all data';
+            console.log('Restored refresh button state');
         }
     }
 }
