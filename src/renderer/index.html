@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiMC Hub - Multi-Hosting Minecraft Server Hub</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-server"></i>
+                    <span>MultiMC Hub</span>
+                </div>
+            </div>
+            
+            <!-- User Profile Section -->
+            <div class="user-profile-section">
+                <div class="user-profile-card">
+                    <div class="user-avatar-large">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name" id="sidebar-user-name">Loading...</div>
+                        <div class="user-platform" id="sidebar-user-platform">Loading...</div>
+                        <button class="btn btn-sm btn-secondary" onclick="showProfileModal()">
+                            <i class="fas fa-edit"></i> Edit Profile
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-item active" data-tab="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#servers" class="nav-item" data-tab="servers">
+                    <i class="fas fa-gamepad"></i>
+                    <span>Servers</span>
+                </a>
+                <a href="#network" class="nav-item" data-tab="network">
+                    <i class="fas fa-network-wired"></i>
+                    <span>Network</span>
+                </a>
+                <a href="#downloads" class="nav-item" data-tab="downloads">
+                    <i class="fas fa-download"></i>
+                    <span>Downloads</span>
+                </a>
+                <a href="#logs" class="nav-item" data-tab="logs">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Logs</span>
+                </a>
+                <a href="#settings" class="nav-item" data-tab="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <div class="status-dot" id="connection-status"></div>
+                    <span id="connection-text">Connecting...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <span id="user-name">Loading...</span>
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content">
+                <!-- Dashboard Tab -->
+                <div id="dashboard" class="tab-content active">
+                    <div class="dashboard-grid">
+                        <!-- System Status Card -->
+                        <div class="card system-status-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-server"></i> System Status</h3>
+                            </div>
+                            <div class="card-content">
+                                <div id="system-status-content">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Active Servers Card -->
+                        <div class="card active-servers-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-gamepad"></i> Active Servers</h3>
+                                <button class="btn btn-primary btn-sm" onclick="showStartServerModal()">
+                                    <i class="fas fa-plus"></i> Start Server
+                                </button>
+                            </div>
+                            <div class="card-content">
+                                <div id="active-servers-content">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Network Status Card -->
+                        <div class="card network-status-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-network-wired"></i> Network Status</h3>
+                            </div>
+                            <div class="card-content">
+                                <div id="network-status-content">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions Card -->
+                        <div class="card quick-actions-card">
+                            <div class="card-header">
+                                <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                            </div>
+                            <div class="card-content">
+                                <div class="quick-actions-grid">
+                                    <button class="quick-action-btn" onclick="showStartServerModal()">
+                                        <i class="fas fa-play"></i>
+                                        <span>Start Server</span>
+                                    </button>
+                                    <button class="quick-action-btn" onclick="showDownloadModal()">
+                                        <i class="fas fa-download"></i>
+                                        <span>Download Files</span>
+                                    </button>
+                                    <button class="quick-action-btn" onclick="refreshStatus()">
+                                        <i class="fas fa-sync"></i>
+                                        <span>Refresh Status</span>
+                                    </button>
+                                    <button class="quick-action-btn" onclick="showNetworkInfo()">
+                                        <i class="fas fa-info-circle"></i>
+                                        <span>Network Info</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Servers Tab -->
+                <div id="servers" class="tab-content">
+                    <div class="servers-container">
+                        <div class="servers-header">
+                            <h2>Minecraft Servers</h2>
+                            <button class="btn btn-primary" onclick="showStartServerModal()">
+                                <i class="fas fa-plus"></i> Start New Server
+                            </button>
+                        </div>
+                        
+                        <div class="servers-grid" id="servers-grid">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network Tab -->
+                <div id="network" class="tab-content">
+                    <div class="network-container">
+                        <div class="network-header">
+                            <h2>Network & Peers</h2>
+                            <button class="btn btn-secondary" onclick="refreshNetworkStatus()">
+                                <i class="fas fa-sync"></i> Refresh
+                            </button>
+                        </div>
+                        
+                        <div class="network-info-grid">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Local Network Info</h3>
+                                </div>
+                                <div class="card-content" id="local-network-info">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Connected Peers</h3>
+                                </div>
+                                <div class="card-content" id="connected-peers">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Downloads Tab -->
+                <div id="downloads" class="tab-content">
+                    <div class="downloads-container">
+                        <div class="downloads-header">
+                            <h2>Downloads & Dependencies</h2>
+                        </div>
+                        
+                        <div class="downloads-grid">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Minecraft Server Versions</h3>
+                                </div>
+                                <div class="card-content" id="minecraft-versions">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Forge Server Versions</h3>
+                                </div>
+                                <div class="card-content" id="forge-versions">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logs Tab -->
+                <div id="logs" class="tab-content">
+                    <div class="logs-container">
+                        <div class="logs-header">
+                            <h2>Application Logs</h2>
+                            <div class="logs-controls">
+                                <select id="log-level-filter" onchange="filterLogs()">
+                                    <option value="all">All Levels</option>
+                                    <option value="error">Error</option>
+                                    <option value="warn">Warning</option>
+                                    <option value="info">Info</option>
+                                    <option value="debug">Debug</option>
+                                    <option value="trace">Trace</option>
+                                </select>
+                                <button class="btn btn-secondary" onclick="refreshLogs()">
+                                    <i class="fas fa-sync"></i> Refresh
+                                </button>
+                                <button class="btn btn-warning" onclick="clearLogs()">
+                                    <i class="fas fa-trash"></i> Clear Old Logs
+                                </button>
+                                <button class="btn btn-primary" onclick="exportLogs()">
+                                    <i class="fas fa-download"></i> Export
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="logs-content">
+                            <div class="logs-sidebar">
+                                <div class="log-files-list" id="log-files-list">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="logs-main">
+                                <div class="logs-viewer" id="logs-viewer">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div id="settings" class="tab-content">
+                    <div class="settings-container">
+                        <div class="settings-header">
+                            <h2>Settings</h2>
+                        </div>
+                        
+                        <div class="settings-grid">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Application Settings</h3>
+                                </div>
+                                <div class="card-content">
+                                    <div class="setting-item">
+                                        <label>Default Server Port</label>
+                                        <input type="number" id="default-port" value="25565" min="1024" max="65535">
+                                    </div>
+                                    <div class="setting-item">
+                                        <label>Max Players (Default)</label>
+                                        <input type="number" id="max-players" value="20" min="1" max="100">
+                                    </div>
+                                    <div class="setting-item">
+                                        <label>Auto-start on launch</label>
+                                        <input type="checkbox" id="auto-start">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Network Settings</h3>
+                                </div>
+                                <div class="card-content">
+                                    <div class="setting-item">
+                                        <label>Discovery Port</label>
+                                        <input type="number" id="discovery-port" value="3001" min="1024" max="65535">
+                                    </div>
+                                    <div class="setting-item">
+                                        <label>Communication Port</label>
+                                        <input type="number" id="communication-port" value="3002" min="1024" max="65535">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Logging Settings</h3>
+                                </div>
+                                <div class="card-content">
+                                    <div class="setting-item">
+                                        <label>Log Level</label>
+                                        <select id="log-level">
+                                            <option value="error">Error</option>
+                                            <option value="warn">Warning</option>
+                                            <option value="info" selected>Info</option>
+                                            <option value="debug">Debug</option>
+                                            <option value="trace">Trace</option>
+                                        </select>
+                                    </div>
+                                    <div class="setting-item">
+                                        <label>Max Log File Size (MB)</label>
+                                        <input type="number" id="max-log-size" value="10" min="1" max="100">
+                                    </div>
+                                    <div class="setting-item">
+                                        <label>Keep Log Files (days)</label>
+                                        <input type="number" id="log-retention" value="7" min="1" max="30">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Profile</h3>
+                <button class="modal-close" onclick="closeModal('profile-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="profile-form">
+                    <div class="form-group">
+                        <label for="profile-name">Display Name</label>
+                        <input type="text" id="profile-name" required placeholder="Enter your name">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="profile-platform">Platform</label>
+                        <input type="text" id="profile-platform" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="profile-id">User ID</label>
+                        <input type="text" id="profile-id" readonly>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('profile-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveProfile()">Save Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Server Modal -->
+    <div id="start-server-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Start New Server</h3>
+                <button class="modal-close" onclick="closeModal('start-server-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="start-server-form">
+                    <div class="form-group">
+                        <label for="server-name">Server Name</label>
+                        <input type="text" id="server-name" required placeholder="My Awesome Server">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="server-type">Server Type</label>
+                        <select id="server-type" required>
+                            <option value="vanilla">Vanilla Minecraft</option>
+                            <option value="forge">Forge (Modded)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="server-version">Version</label>
+                        <select id="server-version" required>
+                            <option value="">Select version...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="server-port">Port</label>
+                        <input type="number" id="server-port" value="25565" min="1024" max="65535">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="max-players">Max Players</label>
+                        <input type="number" id="max-players-input" value="20" min="1" max="100">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="auto-start-server">
+                            <input type="checkbox" id="auto-start-server">
+                            Auto-start server when application launches
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('start-server-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="startServer()">Start Server</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Download Modal -->
+    <div id="download-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Download Dependencies</h3>
+                <button class="modal-close" onclick="closeModal('download-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="download-content">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Server Details Modal -->
+    <div id="server-details-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Server Details</h3>
+                <button class="modal-close" onclick="closeModal('server-details-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="server-details-content">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" onclick="stopServer()">Stop Server</button>
+                <button class="btn btn-warning" onclick="transferHost()">Transfer Host</button>
+                <button class="btn btn-secondary" onclick="closeModal('server-details-modal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <script src="renderer.js"></script>
+</body>
+</html> 
