@@ -92,10 +92,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/multimc-hub.git"
+    "url": "https://github.com/billibobby/multimc.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/multimc-hub/issues"
+    "url": "https://github.com/billibobby/multimc/issues"
   },
-  "homepage": "https://github.com/yourusername/multimc-hub#readme"
+  "homepage": "https://github.com/billibobby/multimc#readme"
 } 
