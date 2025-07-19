@@ -5,6 +5,7 @@ const { ServerManager } = require('./server/ServerManager');
 const { NetworkManager } = require('./network/NetworkManager');
 const { ExternalHostingManager } = require('./server/ExternalHostingManager');
 const { ModrinthManager } = require('./utils/ModrinthManager');
+const { CloudSyncManager } = require('./utils/CloudSyncManager');
 const { SystemChecker } = require('./utils/SystemChecker');
 const { logger } = require('./utils/Logger');
 const fs = require('fs/promises'); // Added for file system operations
@@ -14,6 +15,7 @@ let serverManager;
 let networkManager;
 let externalHostingManager;
 let modrinthManager;
+let cloudSyncManager;
 let systemChecker;
 
 // Auto-updater configuration
@@ -184,6 +186,11 @@ async function initializeManagers() {
     logger.system('Initializing ModrinthManager');
     modrinthManager = new ModrinthManager();
     logger.system('ModrinthManager initialized successfully');
+    
+    // Initialize Cloud Sync manager
+    logger.system('Initializing CloudSyncManager');
+    cloudSyncManager = new CloudSyncManager(networkManager);
+    logger.system('CloudSyncManager initialized successfully');
     
     // Set up event listeners to forward server events to renderer
     serverManager.on('server-update', (data) => {
@@ -1284,6 +1291,175 @@ ipcMain.handle('get-modrinth-cache-stats', async () => {
     return { success: true, stats };
   } catch (error) {
     logger.error('Failed to get Modrinth cache stats:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Cloud Sync IPC handlers
+ipcMain.handle('register-world', async (event, worldPath, worldName, serverId) => {
+  try {
+    logger.debug('Registering world', { worldPath, worldName, serverId });
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    const worldInfo = await cloudSyncManager.registerWorld(worldPath, worldName, serverId);
+    return { success: true, worldInfo };
+  } catch (error) {
+    logger.error('Failed to register world:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('register-server', async (event, serverPath, serverName, serverConfig) => {
+  try {
+    logger.debug('Registering server', { serverPath, serverName });
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    const serverInfo = await cloudSyncManager.registerServer(serverPath, serverName, serverConfig);
+    return { success: true, serverInfo };
+  } catch (error) {
+    logger.error('Failed to register server:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('sync-world', async (event, worldId) => {
+  try {
+    logger.debug('Syncing world', { worldId });
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    const worldInfo = await cloudSyncManager.syncWorld(worldId);
+    return { success: true, worldInfo };
+  } catch (error) {
+    logger.error('Failed to sync world:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('sync-server', async (event, serverId) => {
+  try {
+    logger.debug('Syncing server', { serverId });
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    const serverInfo = await cloudSyncManager.syncServer(serverId);
+    return { success: true, serverInfo };
+  } catch (error) {
+    logger.error('Failed to sync server:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('restore-world', async (event, worldId, targetPath) => {
+  try {
+    logger.debug('Restoring world', { worldId, targetPath });
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    const result = await cloudSyncManager.restoreWorld(worldId, targetPath);
+    return { success: true, result };
+  } catch (error) {
+    logger.error('Failed to restore world:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('restore-server', async (event, serverId, targetPath) => {
+  try {
+    logger.debug('Restoring server', { serverId, targetPath });
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    const result = await cloudSyncManager.restoreServer(serverId, targetPath);
+    return { success: true, result };
+  } catch (error) {
+    logger.error('Failed to restore server:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('initiate-transfer', async (event, type, id, targetContactId) => {
+  try {
+    logger.debug('Initiating transfer', { type, id, targetContactId });
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    const transferInfo = await cloudSyncManager.initiateTransfer(type, id, targetContactId);
+    return { success: true, transferInfo };
+  } catch (error) {
+    logger.error('Failed to initiate transfer:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('accept-transfer', async (event, transferId) => {
+  try {
+    logger.debug('Accepting transfer', { transferId });
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    const transfer = await cloudSyncManager.acceptTransfer(transferId);
+    return { success: true, transfer };
+  } catch (error) {
+    logger.error('Failed to accept transfer:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('decline-transfer', async (event, transferId) => {
+  try {
+    logger.debug('Declining transfer', { transferId });
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    const transfer = await cloudSyncManager.declineTransfer(transferId);
+    return { success: true, transfer };
+  } catch (error) {
+    logger.error('Failed to decline transfer:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-sync-status', async () => {
+  try {
+    logger.debug('Getting sync status');
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    const status = cloudSyncManager.getSyncStatus();
+    return { success: true, status };
+  } catch (error) {
+    logger.error('Failed to get sync status:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-all-registered', async () => {
+  try {
+    logger.debug('Getting all registered worlds and servers');
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    const registered = await cloudSyncManager.getAllRegistered();
+    return { success: true, registered };
+  } catch (error) {
+    logger.error('Failed to get all registered:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('cleanup-backups', async (event, maxAge) => {
+  try {
+    logger.debug('Cleaning up backups', { maxAge });
+    if (!cloudSyncManager) {
+      return { success: false, error: 'Cloud sync manager not initialized' };
+    }
+    await cloudSyncManager.cleanupOldBackups(maxAge);
+    return { success: true };
+  } catch (error) {
+    logger.error('Failed to cleanup backups:', error);
     return { success: false, error: error.message };
   }
 });

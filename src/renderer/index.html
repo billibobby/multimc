@@ -59,6 +59,10 @@
                     <i class="fas fa-puzzle-piece"></i>
                     <span>Modrinth Browser</span>
                 </a>
+                <a href="#cloud-sync" class="nav-item" data-tab="cloud-sync">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>Cloud Sync</span>
+                </a>
                 <a href="#logs" class="nav-item" data-tab="logs">
                     <i class="fas fa-file-alt"></i>
                     <span>Logs</span>
@@ -385,6 +389,85 @@
                                             <h3>No mods found</h3>
                                             <p>Try adjusting your search terms or filters</p>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cloud Sync Tab -->
+                <div id="cloud-sync" class="tab-content">
+                    <div class="cloud-sync-container">
+                        <div class="cloud-sync-header">
+                            <h2>Cloud Sync & Transfer</h2>
+                            <div class="cloud-sync-actions">
+                                <button class="btn btn-primary" onclick="refreshCloudSync()">
+                                    <i class="fas fa-sync"></i> Refresh
+                                </button>
+                                <button class="btn btn-success" onclick="showTransferManager()">
+                                    <i class="fas fa-exchange-alt"></i> Transfers
+                                </button>
+                                <button class="btn btn-secondary" onclick="showBackupManager()">
+                                    <i class="fas fa-database"></i> Backups
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Sync Status -->
+                        <div class="sync-status-section">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3><i class="fas fa-info-circle"></i> Sync Status</h3>
+                                </div>
+                                <div class="card-content">
+                                    <div class="sync-status-grid">
+                                        <div class="sync-status-item">
+                                            <span class="status-label">Auto Sync:</span>
+                                            <span class="status-value" id="auto-sync-status">Loading...</span>
+                                        </div>
+                                        <div class="sync-status-item">
+                                            <span class="status-label">Last Sync:</span>
+                                            <span class="status-value" id="last-sync-time">Loading...</span>
+                                        </div>
+                                        <div class="sync-status-item">
+                                            <span class="status-label">Pending Transfers:</span>
+                                            <span class="status-value" id="pending-transfers-count">Loading...</span>
+                                        </div>
+                                        <div class="sync-status-item">
+                                            <span class="status-label">Registered Worlds:</span>
+                                            <span class="status-value" id="registered-worlds-count">Loading...</span>
+                                        </div>
+                                        <div class="sync-status-item">
+                                            <span class="status-label">Registered Servers:</span>
+                                            <span class="status-value" id="registered-servers-count">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Registered Worlds and Servers -->
+                        <div class="registered-content">
+                            <div class="content-tabs">
+                                <button class="content-tab active" onclick="switchContentTab('worlds')" data-tab="worlds">
+                                    <i class="fas fa-globe"></i> Worlds
+                                </button>
+                                <button class="content-tab" onclick="switchContentTab('servers')" data-tab="servers">
+                                    <i class="fas fa-server"></i> Servers
+                                </button>
+                            </div>
+                            
+                            <div class="content-tab-panels">
+                                <div id="worlds-panel" class="content-tab-panel active">
+                                    <div class="worlds-grid" id="worlds-grid">
+                                        <div class="loading-spinner"></div>
+                                    </div>
+                                </div>
+                                
+                                <div id="servers-panel" class="content-tab-panel">
+                                    <div class="servers-grid" id="servers-grid">
+                                        <div class="loading-spinner"></div>
                                     </div>
                                 </div>
                             </div>
@@ -1191,6 +1274,133 @@
                 <button class="btn btn-primary" onclick="installSelectedModVersion()" id="install-mod-btn" style="display: none;">
                     <i class="fas fa-download"></i> Install Selected Version
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfer Manager Modal -->
+    <div id="transfer-manager-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exchange-alt"></i> Transfer Manager</h3>
+                <button class="modal-close" onclick="closeModal('transfer-manager-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="transfer-tabs">
+                    <button class="transfer-tab active" onclick="switchTransferTab('outgoing')" data-tab="outgoing">
+                        <i class="fas fa-upload"></i> Outgoing
+                    </button>
+                    <button class="transfer-tab" onclick="switchTransferTab('incoming')" data-tab="incoming">
+                        <i class="fas fa-download"></i> Incoming
+                    </button>
+                    <button class="transfer-tab" onclick="switchTransferTab('new')" data-tab="new">
+                        <i class="fas fa-plus"></i> New Transfer
+                    </button>
+                </div>
+                
+                <div id="outgoing-transfers-tab" class="transfer-tab-content">
+                    <div class="transfers-list" id="outgoing-transfers-list">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+                
+                <div id="incoming-transfers-tab" class="transfer-tab-content" style="display: none;">
+                    <div class="transfers-list" id="incoming-transfers-list">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+                
+                <div id="new-transfer-tab" class="transfer-tab-content" style="display: none;">
+                    <div class="new-transfer-form">
+                        <div class="form-group">
+                            <label for="transfer-type">Transfer Type</label>
+                            <select id="transfer-type" onchange="updateTransferOptions()">
+                                <option value="">Select type...</option>
+                                <option value="world">World</option>
+                                <option value="server">Server</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group" id="transfer-item-group" style="display: none;">
+                            <label for="transfer-item">Select Item</label>
+                            <select id="transfer-item">
+                                <option value="">Select item...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group" id="transfer-contact-group" style="display: none;">
+                            <label for="transfer-contact">Select Contact</label>
+                            <select id="transfer-contact">
+                                <option value="">Select contact...</option>
+                            </select>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="initiateTransfer()" id="initiate-transfer-btn" style="display: none;">
+                            <i class="fas fa-paper-plane"></i> Send Transfer Request
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup Manager Modal -->
+    <div id="backup-manager-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-database"></i> Backup Manager</h3>
+                <button class="modal-close" onclick="closeModal('backup-manager-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="backup-tabs">
+                    <button class="backup-tab active" onclick="switchBackupTab('worlds')" data-tab="worlds">
+                        <i class="fas fa-globe"></i> World Backups
+                    </button>
+                    <button class="backup-tab" onclick="switchBackupTab('servers')" data-tab="servers">
+                        <i class="fas fa-server"></i> Server Backups
+                    </button>
+                    <button class="backup-tab" onclick="switchBackupTab('settings')" data-tab="settings">
+                        <i class="fas fa-cog"></i> Settings
+                    </button>
+                </div>
+                
+                <div id="world-backups-tab" class="backup-tab-content">
+                    <div class="backups-list" id="world-backups-list">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+                
+                <div id="server-backups-tab" class="backup-tab-content" style="display: none;">
+                    <div class="backups-list" id="server-backups-list">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+                
+                <div id="backup-settings-tab" class="backup-tab-content" style="display: none;">
+                    <div class="backup-settings">
+                        <div class="form-group">
+                            <label for="backup-retention">Backup Retention (days)</label>
+                            <input type="number" id="backup-retention" value="30" min="1" max="365">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="auto-backup-interval">Auto Backup Interval (minutes)</label>
+                            <input type="number" id="auto-backup-interval" value="5" min="1" max="60">
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="saveBackupSettings()">
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+                        
+                        <button class="btn btn-warning" onclick="cleanupOldBackups()">
+                            <i class="fas fa-trash"></i> Cleanup Old Backups
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

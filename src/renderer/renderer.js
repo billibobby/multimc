@@ -3990,4 +3990,470 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 100);
         });
     }
+    
+    // Add tab change listener for Cloud Sync
+    const cloudSyncTab = document.querySelector('[data-tab="cloud-sync"]');
+    if (cloudSyncTab) {
+        cloudSyncTab.addEventListener('click', function() {
+            setTimeout(() => {
+                if (document.getElementById('cloud-sync').classList.contains('active')) {
+                    loadCloudSyncData();
+                }
+            }, 100);
+        });
+    }
 });
+
+// Cloud Sync Functions
+let currentCloudSyncData = null;
+
+async function loadCloudSyncData() {
+    await loadSyncStatus();
+    await loadRegisteredContent();
+}
+
+async function loadSyncStatus() {
+    try {
+        const result = await ipcRenderer.invoke('get-sync-status');
+        if (result.success) {
+            displaySyncStatus(result.status);
+        } else {
+            showNotification('Failed to load sync status', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading sync status:', error);
+        showNotification('Failed to load sync status', 'error');
+    }
+}
+
+function displaySyncStatus(status) {
+    document.getElementById('auto-sync-status').textContent = status.autoSyncEnabled ? 'Enabled' : 'Disabled';
+    document.getElementById('last-sync-time').textContent = new Date(status.lastSync).toLocaleString();
+    document.getElementById('pending-transfers-count').textContent = status.pendingTransfers.toString();
+}
+
+async function loadRegisteredContent() {
+    try {
+        const result = await ipcRenderer.invoke('get-all-registered');
+        if (result.success) {
+            currentCloudSyncData = result.registered;
+            displayRegisteredWorlds(result.registered.worlds);
+            displayRegisteredServers(result.registered.servers);
+            
+            // Update counts
+            document.getElementById('registered-worlds-count').textContent = result.registered.worlds.length.toString();
+            document.getElementById('registered-servers-count').textContent = result.registered.servers.length.toString();
+        } else {
+            showNotification('Failed to load registered content', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading registered content:', error);
+        showNotification('Failed to load registered content', 'error');
+    }
+}
+
+function displayRegisteredWorlds(worlds) {
+    const worldsGrid = document.getElementById('worlds-grid');
+    
+    if (!worlds || worlds.length === 0) {
+        worldsGrid.innerHTML = '<p class="no-content">No worlds registered for sync</p>';
+        return;
+    }
+    
+    const worldsHtml = worlds.map(world => `
+        <div class="world-card">
+            <div class="world-card-header">
+                <div class="world-card-title">${world.name}</div>
+                <div class="world-card-meta">Created: ${new Date(world.createdAt).toLocaleDateString()}</div>
+            </div>
+            <div class="world-card-content">
+                <div class="world-card-info">
+                    <div class="info-item">
+                        <span class="info-label">Size:</span>
+                        <span class="info-value">${formatFileSize(world.size)}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Version:</span>
+                        <span class="info-value">${world.version}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Last Modified:</span>
+                        <span class="info-value">${new Date(world.lastModified).toLocaleString()}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Shared with:</span>
+                        <span class="info-value">${world.contacts.length} contacts</span>
+                    </div>
+                </div>
+                <div class="world-card-actions">
+                    <button class="btn btn-sm btn-primary" onclick="syncWorld('${world.id}')">
+                        <i class="fas fa-sync"></i> Sync
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="transferWorld('${world.id}')">
+                        <i class="fas fa-share"></i> Transfer
+                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="restoreWorld('${world.id}')">
+                        <i class="fas fa-download"></i> Restore
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    worldsGrid.innerHTML = worldsHtml;
+}
+
+function displayRegisteredServers(servers) {
+    const serversGrid = document.getElementById('servers-grid');
+    
+    if (!servers || servers.length === 0) {
+        serversGrid.innerHTML = '<p class="no-content">No servers registered for sync</p>';
+        return;
+    }
+    
+    const serversHtml = servers.map(server => `
+        <div class="server-card">
+            <div class="server-card-header">
+                <div class="server-card-title">${server.name}</div>
+                <div class="server-card-meta">Created: ${new Date(server.createdAt).toLocaleDateString()}</div>
+            </div>
+            <div class="server-card-content">
+                <div class="server-card-info">
+                    <div class="info-item">
+                        <span class="info-label">Size:</span>
+                        <span class="info-value">${formatFileSize(server.size)}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Version:</span>
+                        <span class="info-value">${server.version}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value">${server.status}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Shared with:</span>
+                        <span class="info-value">${server.contacts.length} contacts</span>
+                    </div>
+                </div>
+                <div class="server-card-actions">
+                    <button class="btn btn-sm btn-primary" onclick="syncServer('${server.id}')">
+                        <i class="fas fa-sync"></i> Sync
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="transferServer('${server.id}')">
+                        <i class="fas fa-share"></i> Transfer
+                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="restoreServer('${server.id}')">
+                        <i class="fas fa-download"></i> Restore
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    serversGrid.innerHTML = serversHtml;
+}
+
+function switchContentTab(tab) {
+    // Hide all tab panels
+    document.querySelectorAll('.content-tab-panel').forEach(panel => panel.classList.remove('active'));
+    document.querySelectorAll('.content-tab').forEach(tabBtn => tabBtn.classList.remove('active'));
+    
+    // Show selected tab panel
+    document.getElementById(`${tab}-panel`).classList.add('active');
+    event.target.classList.add('active');
+}
+
+// World and Server Actions
+async function syncWorld(worldId) {
+    try {
+        showNotification('Syncing world...', 'info');
+        const result = await ipcRenderer.invoke('sync-world', worldId);
+        if (result.success) {
+            showNotification('World synced successfully', 'success');
+            loadRegisteredContent();
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error syncing world:', error);
+        showNotification('Failed to sync world', 'error');
+    }
+}
+
+async function syncServer(serverId) {
+    try {
+        showNotification('Syncing server...', 'info');
+        const result = await ipcRenderer.invoke('sync-server', serverId);
+        if (result.success) {
+            showNotification('Server synced successfully', 'success');
+            loadRegisteredContent();
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error syncing server:', error);
+        showNotification('Failed to sync server', 'error');
+    }
+}
+
+async function restoreWorld(worldId) {
+    // This would need a target path selection
+    const targetPath = prompt('Enter target path for world restoration:');
+    if (!targetPath) return;
+    
+    try {
+        showNotification('Restoring world...', 'info');
+        const result = await ipcRenderer.invoke('restore-world', worldId, targetPath);
+        if (result.success) {
+            showNotification('World restored successfully', 'success');
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error restoring world:', error);
+        showNotification('Failed to restore world', 'error');
+    }
+}
+
+async function restoreServer(serverId) {
+    // This would need a target path selection
+    const targetPath = prompt('Enter target path for server restoration:');
+    if (!targetPath) return;
+    
+    try {
+        showNotification('Restoring server...', 'info');
+        const result = await ipcRenderer.invoke('restore-server', serverId, targetPath);
+        if (result.success) {
+            showNotification('Server restored successfully', 'success');
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error restoring server:', error);
+        showNotification('Failed to restore server', 'error');
+    }
+}
+
+function transferWorld(worldId) {
+    showTransferManager();
+    // Pre-select world in transfer form
+    setTimeout(() => {
+        document.getElementById('transfer-type').value = 'world';
+        updateTransferOptions();
+        // Set the world ID when options are loaded
+    }, 100);
+}
+
+function transferServer(serverId) {
+    showTransferManager();
+    // Pre-select server in transfer form
+    setTimeout(() => {
+        document.getElementById('transfer-type').value = 'server';
+        updateTransferOptions();
+        // Set the server ID when options are loaded
+    }, 100);
+}
+
+// Transfer Manager Functions
+function showTransferManager() {
+    document.getElementById('transfer-manager-modal').style.display = 'block';
+    loadTransferData();
+}
+
+function closeTransferManager() {
+    document.getElementById('transfer-manager-modal').style.display = 'none';
+}
+
+function switchTransferTab(tab) {
+    // Hide all tab contents
+    document.querySelectorAll('.transfer-tab-content').forEach(content => {
+        content.style.display = 'none';
+    });
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.transfer-tabs .transfer-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    document.getElementById(`${tab}-transfers-tab`).style.display = 'block';
+    
+    // Add active class to selected tab
+    event.target.classList.add('active');
+}
+
+async function loadTransferData() {
+    // This would load actual transfer data from the cloud sync manager
+    // For now, we'll show placeholder data
+    displayOutgoingTransfers([]);
+    displayIncomingTransfers([]);
+}
+
+function displayOutgoingTransfers(transfers) {
+    const transfersList = document.getElementById('outgoing-transfers-list');
+    
+    if (!transfers || transfers.length === 0) {
+        transfersList.innerHTML = '<p class="no-transfers">No outgoing transfers</p>';
+        return;
+    }
+    
+    // Display transfers
+}
+
+function displayIncomingTransfers(transfers) {
+    const transfersList = document.getElementById('incoming-transfers-list');
+    
+    if (!transfers || transfers.length === 0) {
+        transfersList.innerHTML = '<p class="no-transfers">No incoming transfers</p>';
+        return;
+    }
+    
+    // Display transfers
+}
+
+function updateTransferOptions() {
+    const transferType = document.getElementById('transfer-type').value;
+    const transferItemGroup = document.getElementById('transfer-item-group');
+    const transferContactGroup = document.getElementById('transfer-contact-group');
+    const initiateBtn = document.getElementById('initiate-transfer-btn');
+    
+    if (!transferType) {
+        transferItemGroup.style.display = 'none';
+        transferContactGroup.style.display = 'none';
+        initiateBtn.style.display = 'none';
+        return;
+    }
+    
+    // Load items based on type
+    loadTransferItems(transferType);
+    transferItemGroup.style.display = 'block';
+    
+    // Load contacts
+    loadTransferContacts();
+    transferContactGroup.style.display = 'block';
+    
+    initiateBtn.style.display = 'block';
+}
+
+async function loadTransferItems(type) {
+    const transferItem = document.getElementById('transfer-item');
+    transferItem.innerHTML = '<option value="">Select item...</option>';
+    
+    if (!currentCloudSyncData) return;
+    
+    const items = type === 'world' ? currentCloudSyncData.worlds : currentCloudSyncData.servers;
+    
+    items.forEach(item => {
+        transferItem.innerHTML += `<option value="${item.id}">${item.name}</option>`;
+    });
+}
+
+async function loadTransferContacts() {
+    const transferContact = document.getElementById('transfer-contact');
+    transferContact.innerHTML = '<option value="">Select contact...</option>';
+    
+    try {
+        const result = await ipcRenderer.invoke('get-contacts');
+        if (result.success) {
+            result.contacts.forEach(contact => {
+                transferContact.innerHTML += `<option value="${contact.id}">${contact.name}</option>`;
+            });
+        }
+    } catch (error) {
+        console.error('Error loading contacts:', error);
+    }
+}
+
+async function initiateTransfer() {
+    const transferType = document.getElementById('transfer-type').value;
+    const transferItem = document.getElementById('transfer-item').value;
+    const transferContact = document.getElementById('transfer-contact').value;
+    
+    if (!transferType || !transferItem || !transferContact) {
+        showNotification('Please fill in all fields', 'warning');
+        return;
+    }
+    
+    try {
+        const result = await ipcRenderer.invoke('initiate-transfer', transferType, transferItem, transferContact);
+        if (result.success) {
+            showNotification('Transfer request sent successfully', 'success');
+            closeTransferManager();
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error initiating transfer:', error);
+        showNotification('Failed to initiate transfer', 'error');
+    }
+}
+
+// Backup Manager Functions
+function showBackupManager() {
+    document.getElementById('backup-manager-modal').style.display = 'block';
+    loadBackupData();
+}
+
+function closeBackupManager() {
+    document.getElementById('backup-manager-modal').style.display = 'none';
+}
+
+function switchBackupTab(tab) {
+    // Hide all tab contents
+    document.querySelectorAll('.backup-tab-content').forEach(content => {
+        content.style.display = 'none';
+    });
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.backup-tabs .backup-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    document.getElementById(`${tab}-backups-tab`).style.display = 'block';
+    
+    // Add active class to selected tab
+    event.target.classList.add('active');
+}
+
+async function loadBackupData() {
+    // This would load actual backup data
+    // For now, we'll show placeholder data
+}
+
+async function saveBackupSettings() {
+    const retention = document.getElementById('backup-retention').value;
+    const interval = document.getElementById('auto-backup-interval').value;
+    
+    // Save settings logic would go here
+    showNotification('Backup settings saved', 'success');
+}
+
+async function cleanupOldBackups() {
+    try {
+        const result = await ipcRenderer.invoke('cleanup-backups', 30 * 24 * 60 * 60 * 1000); // 30 days
+        if (result.success) {
+            showNotification('Old backups cleaned up successfully', 'success');
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error cleaning up backups:', error);
+        showNotification('Failed to cleanup backups', 'error');
+    }
+}
+
+function refreshCloudSync() {
+    loadCloudSyncData();
+    showNotification('Cloud sync data refreshed', 'success');
+}
+
+// Utility function for file size formatting
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}

@@ -2512,6 +2512,290 @@ body {
     color: rgba(255, 255, 255, 0.6);
 }
 
+/* Cloud Sync Styles */
+.cloud-sync-container {
+    padding: 20px;
+}
+
+.cloud-sync-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.cloud-sync-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.sync-status-section {
+    margin-bottom: 20px;
+}
+
+.sync-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.sync-status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+}
+
+.status-value {
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.registered-content {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.content-tabs {
+    display: flex;
+    background: rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.content-tab {
+    flex: 1;
+    padding: 15px 20px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.content-tab.active {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+    border-bottom: 2px solid #4caf50;
+}
+
+.content-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.content-tab-panels {
+    padding: 20px;
+}
+
+.content-tab-panel {
+    display: none;
+}
+
+.content-tab-panel.active {
+    display: block;
+}
+
+.worlds-grid, .servers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.world-card, .server-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.world-card:hover, .server-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.world-card-header, .server-card-header {
+    padding: 15px;
+    background: rgba(76, 175, 80, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.world-card-title, .server-card-title {
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.world-card-meta, .server-card-meta {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.world-card-content, .server-card-content {
+    padding: 15px;
+}
+
+.world-card-info, .server-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+}
+
+.info-label {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.info-value {
+    color: white;
+    font-weight: 500;
+}
+
+.world-card-actions, .server-card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.world-card-actions button, .server-card-actions button {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 12px;
+}
+
+/* Transfer Manager Styles */
+.transfer-tabs, .backup-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.transfer-tab, .backup-tab {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.transfer-tab.active, .backup-tab.active {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.transfer-tab:hover, .backup-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.transfer-tab-content, .backup-tab-content {
+    min-height: 200px;
+}
+
+.transfers-list, .backups-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.transfer-item, .backup-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.transfer-info, .backup-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.transfer-type, .backup-type {
+    font-weight: 600;
+    color: white;
+}
+
+.transfer-status, .backup-date {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.transfer-actions, .backup-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.transfer-actions button, .backup-actions button {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.new-transfer-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.backup-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Status indicators */
+.status-pending {
+    color: #ff9800;
+}
+
+.status-transferring {
+    color: #2196f3;
+}
+
+.status-completed {
+    color: #4caf50;
+}
+
+.status-failed {
+    color: #f44336;
+}
+
+.status-declined {
+    color: #9e9e9e;
+}
+
 .service-limits {
     display: grid;
     grid-template-columns: 1fr 1fr;
