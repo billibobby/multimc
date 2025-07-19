@@ -186,13 +186,13 @@ class SystemChecker {
 
   async checkDiskSpace() {
     try {
-      const stats = await fs.stat(this.baseDir);
-      const freeSpace = stats.size; // This is a simplified check
+      const freeSpace = await this.getFreeDiskSpace();
+      const requiredSpace = 100 * 1024 * 1024; // 100MB minimum (much more reasonable)
       
       return {
-        status: freeSpace > 1024 * 1024 * 1024 ? 'ok' : 'insufficient', // 1GB
+        status: freeSpace > requiredSpace ? 'ok' : 'insufficient',
         freeSpace: freeSpace,
-        message: freeSpace > 1024 * 1024 * 1024 ? null : 'Insufficient disk space'
+        message: freeSpace > requiredSpace ? null : 'Insufficient disk space'
       };
     } catch (error) {
       return {
@@ -500,6 +500,266 @@ class SystemChecker {
     };
     await this.saveProfile(defaultProfile);
     return defaultProfile;
+  }
+
+  /**
+   * Scan for existing Minecraft installations on the system
+   */
+  async scanForMinecraftInstallations() {
+    const installations = [];
+    const commonPaths = [
+      // Windows paths
+      path.join(process.env.APPDATA || '', '.minecraft'),
+      path.join(process.env.LOCALAPPDATA || '', 'Packages', 'Microsoft.MinecraftUWP_8wekyb3d8bbwe', 'LocalState', 'games', 'com.mojang'),
+      // macOS paths
+      path.join(os.homedir(), 'Library', 'Application Support', 'minecraft'),
+      path.join(os.homedir(), '.minecraft'),
+      // Linux paths
+      path.join(os.homedir(), '.minecraft'),
+      path.join(os.homedir(), '.local', 'share', 'minecraft'),
+      // MultiMC paths
+      path.join(os.homedir(), 'MultiMC', 'instances'),
+      path.join(os.homedir(), '.local', 'share', 'multimc', 'instances'),
+      // Custom paths from environment
+      process.env.MINECRAFT_PATH,
+      process.env.MULTIMC_PATH
+    ].filter(Boolean);
+
+    console.log('🔍 Scanning for Minecraft installations...');
+
+    for (const basePath of commonPaths) {
+      if (!basePath || !await fs.pathExists(basePath)) continue;
+
+      try {
+        console.log(`  Checking: ${basePath}`);
+        
+        // Check if this is a MultiMC instance folder
+        if (basePath.includes('MultiMC') || basePath.includes('multimc')) {
+          const instances = await this.scanMultiMCInstances(basePath);
+          installations.push(...instances);
+        } else {
+          // Check if this is a standard Minecraft installation
+          const minecraftPath = path.join(basePath, '.minecraft');
+          if (await fs.pathExists(minecraftPath)) {
+            const installation = await this.scanStandardMinecraft(minecraftPath);
+            if (installation) installations.push(installation);
+          } else {
+            // Check if basePath itself is a Minecraft installation
+            const installation = await this.scanStandardMinecraft(basePath);
+            if (installation) installations.push(installation);
+          }
+        }
+      } catch (error) {
+        console.log(`  Error scanning ${basePath}:`, error.message);
+      }
+    }
+
+    // Also scan for any .minecraft folders in common locations
+    const minecraftFolders = await this.findMinecraftFolders();
+    for (const minecraftPath of minecraftFolders) {
+      try {
+        const installation = await this.scanStandardMinecraft(minecraftPath);
+        if (installation) installations.push(installation);
+      } catch (error) {
+        console.log(`  Error scanning ${minecraftPath}:`, error.message);
+      }
+    }
+
+    console.log(`✅ Found ${installations.length} Minecraft installation(s)`);
+    return installations;
+  }
+
+  /**
+   * Scan MultiMC instance folders
+   */
+  async scanMultiMCInstances(multimcPath) {
+    const installations = [];
+    
+    try {
+      const instanceFolders = await fs.readdir(multimcPath);
+      
+      for (const folder of instanceFolders) {
+        const instancePath = path.join(multimcPath, folder);
+        const stats = await fs.stat(instancePath);
+        
+        if (stats.isDirectory()) {
+          const instanceConfigPath = path.join(instancePath, 'instance.cfg');
+          const minecraftPath = path.join(instancePath, '.minecraft');
+          
+          if (await fs.pathExists(minecraftPath)) {
+            try {
+              const installation = await this.scanStandardMinecraft(minecraftPath);
+              if (installation) {
+                installation.name = `MultiMC: ${folder}`;
+                installation.source = 'multimc';
+                installation.instancePath = instancePath;
+                installations.push(installation);
+              }
+            } catch (error) {
+              console.log(`    Error scanning MultiMC instance ${folder}:`, error.message);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.log(`  Error scanning MultiMC path ${multimcPath}:`, error.message);
+    }
+    
+    return installations;
+  }
+
+  /**
+   * Scan a standard Minecraft installation
+   */
+  async scanStandardMinecraft(minecraftPath) {
+    try {
+      const versionsPath = path.join(minecraftPath, 'versions');
+      const assetsPath = path.join(minecraftPath, 'assets');
+      
+      if (!await fs.pathExists(versionsPath)) {
+        return null;
+      }
+
+      const versions = await fs.readdir(versionsPath);
+      const validVersions = [];
+      
+      for (const version of versions) {
+        const versionPath = path.join(versionsPath, version);
+        const stats = await fs.stat(versionPath);
+        
+        if (stats.isDirectory()) {
+          const jarPath = path.join(versionPath, `${version}.jar`);
+          const jsonPath = path.join(versionPath, `${version}.json`);
+          
+          if (await fs.pathExists(jarPath) && await fs.pathExists(jsonPath)) {
+            validVersions.push(version);
+          }
+        }
+      }
+
+      if (validVersions.length === 0) {
+        return null;
+      }
+
+      return {
+        name: 'Standard Minecraft',
+        path: minecraftPath,
+        source: 'standard',
+        versions: validVersions,
+        hasAssets: await fs.pathExists(assetsPath),
+        lastModified: (await fs.stat(minecraftPath)).mtime
+      };
+    } catch (error) {
+      console.log(`  Error scanning Minecraft installation ${minecraftPath}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Find .minecraft folders recursively in common locations
+   */
+  async findMinecraftFolders() {
+    const folders = [];
+    const searchPaths = [
+      os.homedir(),
+      path.join(os.homedir(), 'Documents'),
+      path.join(os.homedir(), 'Downloads'),
+      path.join(os.homedir(), 'Desktop'),
+      process.env.APPDATA || '',
+      process.env.LOCALAPPDATA || ''
+    ].filter(Boolean);
+
+    for (const searchPath of searchPaths) {
+      if (!await fs.pathExists(searchPath)) continue;
+      
+      try {
+        await this.findMinecraftFoldersRecursive(searchPath, folders, 0);
+      } catch (error) {
+        // Ignore permission errors and continue
+      }
+    }
+
+    return folders;
+  }
+
+  /**
+   * Recursively find .minecraft folders (with depth limit)
+   */
+  async findMinecraftFoldersRecursive(dir, folders, depth) {
+    if (depth > 3) return; // Limit depth to avoid infinite recursion
+    
+    try {
+      const items = await fs.readdir(dir);
+      
+      for (const item of items) {
+        if (item === '.minecraft') {
+          folders.push(path.join(dir, item));
+        } else if (depth < 2) { // Only go deeper for first few levels
+          const itemPath = path.join(dir, item);
+          try {
+            const stats = await fs.stat(itemPath);
+            if (stats.isDirectory()) {
+              await this.findMinecraftFoldersRecursive(itemPath, folders, depth + 1);
+            }
+          } catch (error) {
+            // Ignore permission errors
+          }
+        }
+      }
+    } catch (error) {
+      // Ignore permission errors
+    }
+  }
+
+  /**
+   * Copy assets from an existing Minecraft installation
+   */
+  async copyAssetsFromInstallation(installation, targetPath) {
+    if (!installation.hasAssets) {
+      console.log('⚠️  No assets found in the selected installation');
+      return false;
+    }
+
+    try {
+      const sourceAssetsPath = path.join(installation.path, 'assets');
+      const targetAssetsPath = path.join(targetPath, 'assets');
+      
+      console.log(`📁 Copying assets from ${sourceAssetsPath} to ${targetAssetsPath}`);
+      
+      if (await fs.pathExists(targetAssetsPath)) {
+        await fs.remove(targetAssetsPath);
+      }
+      
+      await fs.copy(sourceAssetsPath, targetAssetsPath);
+      console.log('✅ Assets copied successfully');
+      return true;
+    } catch (error) {
+      console.error('❌ Error copying assets:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Copy a specific version from an existing installation
+   */
+  async copyVersionFromInstallation(installation, version, targetPath) {
+    try {
+      const sourceVersionPath = path.join(installation.path, 'versions', version);
+      const targetVersionPath = path.join(targetPath, 'versions', version);
+      
+      console.log(`📁 Copying version ${version} from ${sourceVersionPath} to ${targetVersionPath}`);
+      
+      if (await fs.pathExists(targetVersionPath)) {
+        await fs.remove(targetVersionPath);
+      }
+      
+      await fs.copy(sourceVersionPath, targetVersionPath);
+      console.log(`✅ Version ${version} copied successfully`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Error copying version ${version}:`, error);
+      return false;
+    }
   }
 }
 

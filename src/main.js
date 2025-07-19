@@ -33,6 +33,9 @@ function createWindow() {
     titleBarStyle: 'default',
     show: false
   });
+  
+  // Set global reference for progress updates
+  global.mainWindow = mainWindow;
 
   mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'));
 
@@ -356,6 +359,67 @@ ipcMain.handle('download-neoforge', async (event, version) => {
   }
 });
 
+// Progress update handler for downloads
+ipcMain.on('download-progress', (event, progressData) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('download-progress', progressData);
+  }
+});
+
+// Handle Minecraft installation scanning
+ipcMain.handle('scan-minecraft-installations', async () => {
+  try {
+    logger.system('Scanning for Minecraft installations');
+    const installations = await systemChecker.scanForMinecraftInstallations();
+    logger.system('Minecraft installation scan completed', { count: installations.length });
+    return { success: true, installations };
+  } catch (error) {
+    logger.error('Error scanning Minecraft installations:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle copying assets from existing installation
+ipcMain.handle('copy-minecraft-assets', async (event, installationPath) => {
+  try {
+    logger.system('Copying Minecraft assets from existing installation', { path: installationPath });
+    const targetPath = path.join(os.homedir(), '.multimc-hub', 'minecraft');
+    
+    // Create a mock installation object
+    const installation = {
+      path: installationPath,
+      hasAssets: await fs.pathExists(path.join(installationPath, 'assets'))
+    };
+    
+    const success = await systemChecker.copyAssetsFromInstallation(installation, targetPath);
+    logger.system('Minecraft assets copy completed', { success });
+    return { success };
+  } catch (error) {
+    logger.error('Error copying Minecraft assets:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle copying version from existing installation
+ipcMain.handle('copy-minecraft-version', async (event, installationPath, version) => {
+  try {
+    logger.system('Copying Minecraft version from existing installation', { path: installationPath, version });
+    const targetPath = path.join(os.homedir(), '.multimc-hub', 'minecraft');
+    
+    // Create a mock installation object
+    const installation = {
+      path: installationPath
+    };
+    
+    const success = await systemChecker.copyVersionFromInstallation(installation, version, targetPath);
+    logger.system('Minecraft version copy completed', { success, version });
+    return { success };
+  } catch (error) {
+    logger.error('Error copying Minecraft version:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('check-for-updates', () => {
   logger.info('Manual update check requested');
   checkForUpdates();
@@ -396,6 +460,95 @@ ipcMain.handle('clear-logs', async () => {
 });
 
 // Get Minecraft server logs
+ipcMain.handle('kill-process', async (event, pid) => {
+  try {
+    const { exec } = require('child_process');
+    const util = require('util');
+    const execAsync = util.promisify(exec);
+    
+    if (process.platform === 'darwin' || process.platform === 'linux') {
+      await execAsync(`kill -9 ${pid}`);
+    } else if (process.platform === 'win32') {
+      await execAsync(`taskkill /PID ${pid} /F`);
+    }
+    
+    logger.info('Killed process', { pid });
+    return { success: true };
+  } catch (error) {
+    logger.error('Failed to kill process:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('check-port', async (event, port) => {
+  try {
+    const net = require('net');
+    const { exec } = require('child_process');
+    const util = require('util');
+    const execAsync = util.promisify(exec);
+    
+    return new Promise(async (resolve) => {
+      const server = net.createServer();
+      server.listen(port, () => {
+        server.close();
+        resolve({ available: true });
+      });
+      server.on('error', async () => {
+        // Port is in use, try to find what's using it
+        try {
+          let processInfo = null;
+          if (process.platform === 'darwin') {
+            // macOS
+            const { stdout } = await execAsync(`lsof -i :${port}`);
+            const lines = stdout.trim().split('\n');
+            if (lines.length > 1) {
+              const parts = lines[1].split(/\s+/);
+              processInfo = {
+                pid: parts[1],
+                name: parts[0],
+                command: parts.slice(9).join(' ')
+              };
+            }
+          } else if (process.platform === 'win32') {
+            // Windows
+            const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
+            const lines = stdout.trim().split('\n');
+            if (lines.length > 0) {
+              const parts = lines[0].split(/\s+/);
+              const pid = parts[parts.length - 1];
+              const { stdout: taskStdout } = await execAsync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`);
+              const taskParts = taskStdout.trim().split(',');
+              processInfo = {
+                pid: pid,
+                name: taskParts[0].replace(/"/g, ''),
+                command: taskParts[0].replace(/"/g, '')
+              };
+            }
+          } else {
+            // Linux
+            const { stdout } = await execAsync(`lsof -i :${port}`);
+            const lines = stdout.trim().split('\n');
+            if (lines.length > 1) {
+              const parts = lines[1].split(/\s+/);
+              processInfo = {
+                pid: parts[1],
+                name: parts[0],
+                command: parts.slice(9).join(' ')
+              };
+            }
+          }
+          resolve({ available: false, processInfo });
+        } catch (error) {
+          resolve({ available: false, error: 'Could not identify process using port' });
+        }
+      });
+    });
+  } catch (error) {
+    logger.error('Failed to check port:', error);
+    return { available: false, error: error.message };
+  }
+});
+
 ipcMain.handle('get-server-logs', async (event, serverId, lines = 100) => {
   try {
     logger.debug('Getting server logs', { serverId, lines });

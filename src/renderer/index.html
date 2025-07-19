@@ -77,6 +77,9 @@
                     <h1 id="page-title">Dashboard</h1>
                 </div>
                 <div class="header-right">
+                    <button class="btn btn-secondary btn-sm" onclick="refreshEntireApp()" title="Refresh all data">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
                     <div class="user-info">
                         <span id="user-name">Loading...</span>
                         <div class="user-avatar">
@@ -212,6 +215,29 @@
                     <div class="downloads-container">
                         <div class="downloads-header">
                             <h2>Downloads & Dependencies</h2>
+                            <button class="btn btn-primary" onclick="refreshDownloads()">
+                                <i class="fas fa-sync"></i> Refresh Versions
+                            </button>
+                        </div>
+                        
+                        <!-- Minecraft Installation Scanner -->
+                        <div class="installation-scanner">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3><i class="fas fa-search"></i> Find Existing Minecraft Installations</h3>
+                                </div>
+                                <div class="card-content">
+                                    <p>Scan your PC for existing Minecraft installations to avoid re-downloading files.</p>
+                                    <button id="scan-installations-btn" onclick="scanMinecraftInstallations()" class="btn btn-secondary">
+                                        <i class="fas fa-search"></i> Scan for Minecraft Installations
+                                    </button>
+                                    
+                                    <div id="installations-list" class="installations-list" style="display: none;">
+                                        <h4>Found Installations:</h4>
+                                        <div id="installations-container"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="downloads-grid">

@@ -191,6 +191,21 @@ body {
     gap: 15px;
 }
 
+.header-right .btn {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.header-right .btn:hover {
+    transform: scale(1.05);
+}
+
+.header-right .btn i {
+    font-size: 16px;
+}
+
 .user-info {
     display: flex;
     align-items: center;
@@ -1481,4 +1496,95 @@ body {
 .card[data-loader="minecraft"] .card-header {
     background: rgba(76, 175, 80, 0.2);
     border-bottom-color: rgba(76, 175, 80, 0.3);
+}
+
+/* Download Progress Modal */
+#download-progress-modal .modal-content {
+    max-width: 500px;
+}
+
+#download-progress-modal .progress-container {
+    margin: 20px 0;
+}
+
+#download-progress-modal .download-details {
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+#download-progress-modal .download-details p {
+    margin: 5px 0;
+}
+
+#download-progress-modal #download-status {
+    color: #4fc3f7;
+    font-weight: bold;
+}
+
+/* Installation Scanner */
+.installation-scanner {
+    margin-bottom: 2rem;
+}
+
+.installations-list {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.installation-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.installation-info {
+    flex: 1;
+}
+
+.installation-name {
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 0.25rem;
+}
+
+.installation-path {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Courier New', monospace;
+    word-break: break-all;
+}
+
+.installation-versions {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 0.25rem;
+}
+
+.installation-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.installation-actions button {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
+.installation-actions .btn-copy-assets {
+    background: #4fc3f7;
+    color: white;
+}
+
+.installation-actions .btn-copy-version {
+    background: #4caf50;
+    color: white;
 } 

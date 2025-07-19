@@ -24,6 +24,112 @@ const userName = document.getElementById('user-name');
 const sidebarUserName = document.getElementById('sidebar-user-name');
 const sidebarUserPlatform = document.getElementById('sidebar-user-platform');
 
+// Installation Scanner functions
+async function scanMinecraftInstallations() {
+  const scanBtn = document.getElementById('scan-installations-btn');
+  const installationsList = document.getElementById('installations-list');
+  const installationsContainer = document.getElementById('installations-container');
+  
+  try {
+    // Show loading state
+    scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+    scanBtn.disabled = true;
+    
+    // Hide previous results
+    installationsList.style.display = 'none';
+    
+    // Call the main process to scan for installations
+    const result = await ipcRenderer.invoke('scan-minecraft-installations');
+    
+    if (result.success) {
+      displayInstallations(result.installations);
+      installationsList.style.display = 'block';
+      showNotification('Found ' + result.installations.length + ' Minecraft installation(s)', 'success');
+    } else {
+      showNotification('Failed to scan installations: ' + result.error, 'error');
+    }
+  } catch (error) {
+    console.error('Error scanning installations:', error);
+    showNotification('Error scanning installations: ' + error.message, 'error');
+  } finally {
+    // Reset button state
+    scanBtn.innerHTML = '<i class="fas fa-search"></i> Scan for Minecraft Installations';
+    scanBtn.disabled = false;
+  }
+}
+
+function displayInstallations(installations) {
+  const container = document.getElementById('installations-container');
+  
+  if (installations.length === 0) {
+    container.innerHTML = '<p>No Minecraft installations found on your system.</p>';
+    return;
+  }
+  
+  const html = installations.map(installation => `
+    <div class="installation-item">
+      <div class="installation-info">
+        <div class="installation-name">${installation.name}</div>
+        <div class="installation-path">${installation.path}</div>
+        <div class="installation-versions">
+          <strong>Versions:</strong> ${installation.versions.join(', ')}
+          ${installation.hasAssets ? ' • <span style="color: #4caf50;">Has Assets</span>' : ''}
+        </div>
+      </div>
+      <div class="installation-actions">
+        ${installation.hasAssets ? 
+          `<button class="btn btn-copy-assets" onclick="copyMinecraftAssets('${installation.path}')">
+            <i class="fas fa-copy"></i> Copy Assets
+          </button>` : ''
+        }
+        <button class="btn btn-copy-version" onclick="copyMinecraftVersion('${installation.path}', '${installation.versions[0]}')">
+          <i class="fas fa-download"></i> Copy ${installation.versions[0]}
+        </button>
+      </div>
+    </div>
+  `).join('');
+  
+  container.innerHTML = html;
+}
+
+async function copyMinecraftAssets(installationPath) {
+  try {
+    showNotification('Copying Minecraft assets...', 'info');
+    
+    const result = await ipcRenderer.invoke('copy-minecraft-assets', installationPath);
+    
+    if (result.success) {
+      showNotification('Minecraft assets copied successfully!', 'success');
+      // Refresh the downloads to show updated status
+      refreshDownloads();
+    } else {
+      showNotification('Failed to copy assets: ' + result.error, 'error');
+    }
+  } catch (error) {
+    console.error('Error copying assets:', error);
+    showNotification('Error copying assets: ' + error.message, 'error');
+  }
+}
+
+async function copyMinecraftVersion(installationPath, version) {
+  try {
+    showNotification(`Copying Minecraft version ${version}...`, 'info');
+    
+    const result = await ipcRenderer.invoke('copy-minecraft-version', installationPath, version);
+    
+    if (result.success) {
+      showNotification(`Minecraft version ${version} copied successfully!`, 'success');
+      // Refresh the downloads to show updated status
+      refreshDownloads();
+    } else {
+      showNotification('Failed to copy version: ' + result.error, 'error');
+    }
+  } catch (error) {
+    console.error('Error copying version:', error);
+    showNotification('Error copying version: ' + error.message, 'error');
+  }
+}
+
 // Initialize application
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
@@ -84,6 +190,11 @@ function setupEventListeners() {
     
     ipcRenderer.on('update-progress', (event, progress) => {
         handleUpdateProgress(progress);
+    });
+    
+    // Download progress event listener
+    ipcRenderer.on('download-progress', (event, progressData) => {
+        updateDownloadProgress(progressData.progress, progressData.status);
     });
     
     // Add event listener for server type change
@@ -557,6 +668,15 @@ async function loadDownloadsData() {
             showNotification('System status not available', 'error');
             return;
         }
+        
+        // Refresh system status to get latest data
+        try {
+            console.log('Refreshing system status for downloads...');
+            systemStatus = await ipcRenderer.invoke('get-system-status');
+            console.log('System status refreshed for downloads:', systemStatus);
+        } catch (error) {
+            console.error('Failed to refresh system status for downloads:', error);
+        }
 
         // Load versions for each loader
         const loaders = ['vanilla', 'forge', 'fabric', 'quilt', 'neoforge'];
@@ -583,8 +703,8 @@ async function loadDownloadsData() {
             
             // Show installed versions first
             if (installedVersions.length > 0) {
-                html += '<div class="version-group"><h4>Installed</h4>';
-                installedVersions.slice(0, 5).forEach(version => {
+                html += '<div class="version-group"><h4>Installed (${installedVersions.length})</h4>';
+                installedVersions.forEach(version => {
                     html += `
                         <div class="version-item installed">
                             <span class="version-name">${version}</span>
@@ -597,14 +717,14 @@ async function loadDownloadsData() {
             
             // Show available versions
             if (availableVersions.length > 0) {
-                html += '<div class="version-group"><h4>Available</h4>';
-                availableVersions.slice(0, 5).forEach(version => {
+                html += '<div class="version-group"><h4>Available (${availableVersions.length})</h4>';
+                availableVersions.forEach(version => {
                     const versionId = version.id || version;
                     const versionName = version.minecraftVersion ? `${version.minecraftVersion}-${version.loaderVersion || versionId}` : versionId;
                     html += `
                         <div class="version-item">
                             <span class="version-name">${versionName}</span>
-                            <button class="btn btn-sm btn-primary" onclick="downloadVersion('${loader}', '${versionId}')">
+                            <button class="btn btn-sm btn-primary" onclick="downloadVersion('${loader}', '${versionId}', event)">
                                 <i class="fas fa-download"></i> Download
                             </button>
                         </div>
@@ -617,8 +737,60 @@ async function loadDownloadsData() {
         }
     } catch (error) {
         console.error('Failed to load downloads data:', error);
-        showNotification('Failed to load downloads', 'error');
+            showNotification('Failed to load downloads', 'error');
+}
+
+async function refreshDownloads() {
+    console.log('Refreshing downloads...');
+    showNotification('Refreshing version data...', 'info');
+    await loadDownloadsData();
+    showNotification('Downloads refreshed successfully!', 'success');
+}
+
+async function refreshEntireApp() {
+    console.log('=== REFRESHING ENTIRE APPLICATION ===');
+    showNotification('Refreshing all data...', 'info');
+    
+    try {
+        // Refresh system status - fetch fresh data from main process
+        console.log('Refreshing system status...');
+        systemStatus = await ipcRenderer.invoke('get-system-status');
+        updateSystemStatus();
+        
+        // Refresh network status - fetch fresh data from main process
+        console.log('Refreshing network status...');
+        networkStatus = await ipcRenderer.invoke('get-network-status');
+        updateNetworkStatus();
+        
+        // Refresh server status - fetch fresh data from main process
+        console.log('Refreshing server status...');
+        serverStatus = await ipcRenderer.invoke('get-server-status');
+        updateServerStatus();
+        
+        // Refresh downloads data
+        console.log('Refreshing downloads data...');
+        await loadDownloadsData();
+        
+        // Refresh user profile
+        console.log('Refreshing user profile...');
+        await loadUserProfile();
+        
+        // Refresh servers data
+        console.log('Refreshing servers data...');
+        await loadServersData();
+        
+        // Refresh network data
+        console.log('Refreshing network data...');
+        await loadNetworkData();
+        
+        showNotification('All data refreshed successfully!', 'success');
+        console.log('=== REFRESH COMPLETE ===');
+        
+    } catch (error) {
+        console.error('Error refreshing application:', error);
+        showNotification('Error refreshing data: ' + error.message, 'error');
     }
+}
 }
 
 // Modal functions
@@ -644,6 +816,7 @@ async function showStartServerModal() {
     
     // Always refresh system status to get latest version data
     try {
+        console.log('=== SHOW START SERVER MODAL ===');
         console.log('Refreshing system status...');
         systemStatus = await ipcRenderer.invoke('get-system-status');
         console.log('System status refreshed:', systemStatus);
@@ -683,8 +856,24 @@ async function showStartServerModal() {
         return;
     }
     
-    // Populate version dropdown
+    // Populate version dropdown for the current server type
     console.log('About to populate version dropdown, systemStatus:', systemStatus);
+    await populateVersionDropdown();
+    
+    // Also populate for all server types to test
+    console.log('=== TESTING ALL SERVER TYPES ===');
+    const typeSelect = document.getElementById('server-type');
+    const originalValue = typeSelect.value;
+    
+    for (const serverType of ['vanilla', 'forge', 'fabric', 'quilt', 'neoforge']) {
+        console.log(`\n--- Testing ${serverType} ---`);
+        typeSelect.value = serverType;
+        await populateVersionDropdown();
+        console.log(`${serverType} dropdown options:`, versionSelect.options.length);
+    }
+    
+    // Restore original value
+    typeSelect.value = originalValue;
     await populateVersionDropdown();
 }
 
@@ -712,7 +901,7 @@ function showDownloadModal() {
                     <div class="download-date">${new Date(version.releaseTime).toLocaleDateString()}</div>
                 </div>
                 <button class="btn btn-sm ${isInstalled ? 'btn-secondary' : 'btn-primary'}" 
-                        onclick="downloadMinecraft('${version.id}')" 
+                        onclick="downloadMinecraft('${version.id}', event)" 
                         ${isInstalled ? 'disabled' : ''}>
                     <i class="fas fa-${isInstalled ? 'check' : 'download'}"></i>
                     ${isInstalled ? 'Installed' : 'Download'}
@@ -727,7 +916,7 @@ function showDownloadModal() {
                 <div class="download-name">Forge 1.20.1</div>
                 <div class="download-date">Latest stable version</div>
             </div>
-            <button class="btn btn-sm btn-primary" onclick="downloadForge('1.20.1')">
+            <button class="btn btn-sm btn-primary" onclick="downloadForge('1.20.1', event)">
                 <i class="fas fa-download"></i> Download
             </button>
         </div>
@@ -736,7 +925,7 @@ function showDownloadModal() {
                 <div class="download-name">Forge 1.19.2</div>
                 <div class="download-date">Popular modded version</div>
             </div>
-            <button class="btn btn-sm btn-primary" onclick="downloadForge('1.19.2')">
+            <button class="btn btn-sm btn-primary" onclick="downloadForge('1.19.2', event)">
                 <i class="fas fa-download"></i> Download
             </button>
         </div>
@@ -987,7 +1176,20 @@ async function startServer() {
     const maxPlayers = parseInt(document.getElementById('max-players-input').value);
     const autoStart = document.getElementById('auto-start-server').checked;
 
-    console.log('Starting server with config:', { name, type, version, port, maxPlayers, autoStart });
+    console.log('=== STARTING SERVER ===');
+    console.log('Server config:', { name, type, version, port, maxPlayers, autoStart });
+    
+    // Debug: Check if version is properly selected
+    if (!version) {
+        console.error('No version selected! Available versions in dropdown:', 
+            Array.from(document.getElementById('server-version').options).map(opt => opt.value));
+    }
+    
+    // Debug: Check system status
+    console.log('Current system status:', systemStatus);
+    if (systemStatus && systemStatus.checks[type]) {
+        console.log(`${type} loader data:`, systemStatus.checks[type]);
+    }
 
     // Validation
     if (!name) {
@@ -1003,6 +1205,44 @@ async function startServer() {
     if (!version) {
         showNotification('Please select a server version', 'error');
         return;
+    }
+    
+    // Check if port is available
+    try {
+        const portCheck = await ipcRenderer.invoke('check-port', port);
+        if (!portCheck.available) {
+            console.log('Port check result:', portCheck);
+            
+            if (portCheck.processInfo) {
+                const processInfo = portCheck.processInfo;
+                const message = `Port ${port} is being used by ${processInfo.name} (PID: ${processInfo.pid}).\n\nWould you like to stop this process to free up the port?`;
+                
+                if (confirm(message)) {
+                    try {
+                        const result = await ipcRenderer.invoke('kill-process', processInfo.pid);
+                        if (result.success) {
+                            showNotification(`Stopped process ${processInfo.name}. Port ${port} is now available.`, 'success');
+                            console.log(`Successfully killed process ${processInfo.pid}`);
+                        } else {
+                            showNotification(`Failed to stop process: ${result.error}`, 'error');
+                            return;
+                        }
+                    } catch (error) {
+                        showNotification(`Error stopping process: ${error.message}`, 'error');
+                        return;
+                    }
+                } else {
+                    showNotification(`Port ${port} is still in use. Please choose a different port or stop the process manually.`, 'error');
+                    return;
+                }
+            } else {
+                showNotification(`Port ${port} is already in use. Please choose a different port.`, 'error');
+                return;
+            }
+        }
+        console.log(`Port ${port} is available`);
+    } catch (error) {
+        console.warn('Could not check port availability:', error);
     }
 
     // Get UI elements
@@ -1069,13 +1309,64 @@ async function startServer() {
         } else {
             progressFill.style.background = 'linear-gradient(90deg, #f44336, #d32f2f)';
             progressText.textContent = 'Failed to start server';
-            showNotification(`Failed to start server: ${result.error}`, 'error');
-            console.error('Server start failed:', result.error);
             
-            // Reset UI after error
+            // Show more detailed error message
+            const errorMessage = result.error || 'Unknown error occurred';
+            console.error('Server start failed:', errorMessage);
+            console.error('Full error result:', result);
+            
+            // Show detailed error in modal
+            const errorDetails = document.createElement('div');
+            errorDetails.style.marginTop = '10px';
+            errorDetails.style.padding = '10px';
+            errorDetails.style.backgroundColor = 'rgba(244, 67, 54, 0.1)';
+            errorDetails.style.border = '1px solid rgba(244, 67, 54, 0.3)';
+            errorDetails.style.borderRadius = '4px';
+            errorDetails.style.fontSize = '12px';
+            errorDetails.style.fontFamily = 'monospace';
+            errorDetails.style.whiteSpace = 'pre-wrap';
+            errorDetails.style.maxHeight = '200px';
+            errorDetails.style.overflow = 'auto';
+            errorDetails.textContent = `Error Details:\n${errorMessage}`;
+            
+            // Add error details to progress container
+            const progressContainer = document.getElementById('server-start-progress');
+            progressContainer.appendChild(errorDetails);
+            
+            // Provide specific error guidance
+            let userMessage = `Failed to start server: ${errorMessage}`;
+            if (errorMessage.includes('jar not found') || errorMessage.includes('not installed') || errorMessage.includes('missing')) {
+                userMessage += '\n\nRequired files are missing. Please download them first:';
+                
+                // Extract version info for better guidance
+                const minecraftVersion = version.split('-')[0];
+                userMessage += `\n• Minecraft version ${minecraftVersion}`;
+                if (type !== 'vanilla') {
+                    userMessage += `\n• ${type} loader version ${version}`;
+                }
+                
+                userMessage += '\n\nYou can:';
+                userMessage += '\n1. Use the Downloads tab to download required files';
+                userMessage += '\n2. Use the Installation Scanner to copy from existing Minecraft installations';
+                
+                // Add download button to error message
+                setTimeout(() => {
+                    if (confirm('Would you like to download the required files now?')) {
+                        downloadVersion(type, version, null); // Pass null for event since this is not from a button click
+                    }
+                }, 1000);
+            } else if (errorMessage.includes('port')) {
+                userMessage += '\n\nTry changing the server port (default: 25565).';
+            } else if (errorMessage.includes('Java')) {
+                userMessage += '\n\nPlease ensure Java is properly installed.';
+            }
+            
+            showNotification(userMessage, 'error');
+            
+            // Reset UI after error (longer delay to read error details)
             setTimeout(() => {
                 resetStartServerUI();
-            }, 3000);
+            }, 10000);
         }
     } catch (error) {
         clearInterval(progressInterval);
@@ -1104,6 +1395,12 @@ function resetStartServerUI() {
     progressFill.style.width = '0%';
     progressFill.style.background = 'linear-gradient(90deg, #4fc3f7, #29b6f6)';
     progressText.textContent = 'Initializing...';
+    
+    // Clear any error details that were added
+    const errorDetails = progressContainer.querySelector('div[style*="rgba(244, 67, 54, 0.1)"]');
+    if (errorDetails) {
+        errorDetails.remove();
+    }
 }
 
 async function stopServer() {
@@ -1145,31 +1442,107 @@ async function transferHost() {
 }
 
 // Download functions
-async function downloadMinecraft(version) {
+async function downloadMinecraft(version, event) {
     try {
+        // Show download progress modal
+        showDownloadProgressModal('minecraft', version);
+        updateDownloadProgress(0, 'Starting download...');
+        
+        // Show loading state on button (if called from button click)
+        let button = null;
+        let originalText = '';
+        if (event && event.target) {
+            button = event.target.closest('button');
+            if (button) {
+                originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+                button.disabled = true;
+            }
+        }
+        
         const result = await ipcRenderer.invoke('download-minecraft', version);
+        
         if (result.success) {
+            // Show completion in progress modal
+            updateDownloadProgress(100, 'Download completed successfully!');
+            
+            // Wait a moment so user can see completion
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
             showNotification(`Minecraft ${version} downloaded successfully!`, 'success');
             refreshStatus();
         } else {
-            showNotification(`Failed to download Minecraft: ${result.error}`, 'error');
+            throw new Error(result.error || 'Download failed');
         }
     } catch (error) {
+        // Show error in progress modal
+        updateDownloadProgress(0, `Error: ${error.message}`);
+        
+        // Wait a moment so user can see the error
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
         showNotification(`Error downloading Minecraft: ${error.message}`, 'error');
+    } finally {
+        // Hide download progress modal
+        hideDownloadProgressModal();
+        
+        // Restore button state
+        if (button && originalText) {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
     }
 }
 
-async function downloadForge(version) {
+async function downloadForge(version, event) {
     try {
+        // Show download progress modal
+        showDownloadProgressModal('forge', version);
+        updateDownloadProgress(0, 'Starting download...');
+        
+        // Show loading state on button (if called from button click)
+        let button = null;
+        let originalText = '';
+        if (event && event.target) {
+            button = event.target.closest('button');
+            if (button) {
+                originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+                button.disabled = true;
+            }
+        }
+        
         const result = await ipcRenderer.invoke('download-forge', version);
+        
         if (result.success) {
+            // Show completion in progress modal
+            updateDownloadProgress(100, 'Download completed successfully!');
+            
+            // Wait a moment so user can see completion
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
             showNotification(`Forge ${version} downloaded successfully!`, 'success');
             refreshStatus();
         } else {
-            showNotification(`Failed to download Forge: ${result.error}`, 'error');
+            throw new Error(result.error || 'Download failed');
         }
     } catch (error) {
+        // Show error in progress modal
+        updateDownloadProgress(0, `Error: ${error.message}`);
+        
+        // Wait a moment so user can see the error
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
         showNotification(`Error downloading Forge: ${error.message}`, 'error');
+    } finally {
+        // Hide download progress modal
+        hideDownloadProgressModal();
+        
+        // Restore button state
+        if (button && originalText) {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
     }
 }
 
@@ -1186,82 +1559,107 @@ async function populateVersionDropdown() {
     versionSelect.innerHTML = '<option value="">Select version...</option>';
     
     const serverType = typeSelect.value;
-    console.log('Populating version dropdown for type:', serverType);
+    console.log('=== POPULATING VERSION DROPDOWN ===');
+    console.log('Server type:', serverType);
+    console.log('Current system status:', systemStatus);
     
-    // Get available versions from system status based on server type
-    let availableVersions = [];
-    let installedVersions = [];
-    
-    if (systemStatus && systemStatus.checks) {
-        console.log('System status available:', systemStatus);
-        console.log('Available checks:', Object.keys(systemStatus.checks));
+    // Always refresh system status to ensure we have the latest data
+    try {
+        console.log('Refreshing system status...');
+        systemStatus = await ipcRenderer.invoke('get-system-status');
+        console.log('System status refreshed:', systemStatus);
         
-        const loaderData = systemStatus.checks[serverType];
-        if (loaderData) {
-            availableVersions = loaderData.availableVersions || [];
-            installedVersions = loaderData.installedVersions || [];
-            console.log(`${serverType} versions - Available:`, availableVersions.length, 'Installed:', installedVersions.length);
-            console.log('Available versions:', availableVersions);
-            console.log('Installed versions:', installedVersions);
-        } else {
-            console.log(`No data found for server type: ${serverType}`);
-            console.log('Available loader types:', Object.keys(systemStatus.checks));
-        }
-    } else {
-        console.log('System status not available or missing checks property');
-        console.log('System status:', systemStatus);
-        
-        // Try to refresh system status if not available
-        try {
-            console.log('Attempting to refresh system status...');
-            systemStatus = await ipcRenderer.invoke('get-system-status');
-            console.log('System status refreshed:', systemStatus);
+        if (systemStatus && systemStatus.checks) {
+            console.log('Available checks:', Object.keys(systemStatus.checks));
             
-            if (systemStatus && systemStatus.checks && systemStatus.checks[serverType]) {
-                availableVersions = systemStatus.checks[serverType].availableVersions || [];
-                installedVersions = systemStatus.checks[serverType].installedVersions || [];
-                console.log(`${serverType} versions after refresh - Available:`, availableVersions.length, 'Installed:', installedVersions.length);
+            const loaderData = systemStatus.checks[serverType];
+            if (loaderData) {
+                console.log(`${serverType} loader data:`, loaderData);
+                
+                const availableVersions = loaderData.availableVersions || [];
+                const installedVersions = loaderData.installedVersions || [];
+                
+                console.log(`${serverType} - Available versions:`, availableVersions.length);
+                console.log(`${serverType} - Installed versions:`, installedVersions.length);
+                
+                if (availableVersions.length > 0) {
+                    console.log('Sample available versions:', availableVersions.slice(0, 3));
+                }
+                if (installedVersions.length > 0) {
+                    console.log('Installed versions:', installedVersions);
+                }
+                
+                // Add installed versions first (they're more likely to work)
+                if (installedVersions.length > 0) {
+                    const installedGroup = document.createElement('optgroup');
+                    installedGroup.label = 'Installed Versions';
+                    
+                    installedVersions.forEach(version => {
+                        const option = document.createElement('option');
+                        option.value = version;
+                        option.textContent = version;
+                        installedGroup.appendChild(option);
+                    });
+                    
+                    versionSelect.appendChild(installedGroup);
+                    console.log(`Added ${installedVersions.length} installed versions`);
+                }
+                
+                // Add available versions
+                if (availableVersions.length > 0) {
+                    const availableGroup = document.createElement('optgroup');
+                    availableGroup.label = 'Available Versions';
+                    
+                    availableVersions.forEach(version => {
+                        const option = document.createElement('option');
+                        // Handle different version formats
+                        const versionId = version.id || version.minecraftVersion || version;
+                        const displayText = version.id || version.minecraftVersion || version;
+                        
+                        option.value = versionId;
+                        option.textContent = displayText;
+                        availableGroup.appendChild(option);
+                    });
+                    
+                    versionSelect.appendChild(availableGroup);
+                    console.log(`Added ${availableVersions.length} available versions`);
+                }
+                
+                // If no versions available, show message
+                if (availableVersions.length === 0 && installedVersions.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No versions available';
+                    option.disabled = true;
+                    versionSelect.appendChild(option);
+                    console.log('No versions available for this server type');
+                }
+                
+                console.log(`Final dropdown options: ${versionSelect.options.length}`);
+                
+            } else {
+                console.log(`No data found for server type: ${serverType}`);
+                console.log('Available loader types:', Object.keys(systemStatus.checks));
+                
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No data available for this server type';
+                option.disabled = true;
+                versionSelect.appendChild(option);
             }
-        } catch (error) {
-            console.error('Failed to refresh system status:', error);
+        } else {
+            console.log('System status missing checks property');
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'System status not available';
+            option.disabled = true;
+            versionSelect.appendChild(option);
         }
-    }
-    
-    // Add installed versions first (they're more likely to work)
-    if (installedVersions.length > 0) {
-        const installedGroup = document.createElement('optgroup');
-        installedGroup.label = 'Installed Versions';
-        
-        installedVersions.forEach(version => {
-            const option = document.createElement('option');
-            option.value = version;
-            option.textContent = version;
-            installedGroup.appendChild(option);
-        });
-        
-        versionSelect.appendChild(installedGroup);
-    }
-    
-    // Add available versions
-    if (availableVersions.length > 0) {
-        const availableGroup = document.createElement('optgroup');
-        availableGroup.label = 'Available Versions';
-        
-        availableVersions.forEach(version => {
-            const option = document.createElement('option');
-            option.value = version.id || version;
-            option.textContent = version.id || version;
-            availableGroup.appendChild(option);
-        });
-        
-        versionSelect.appendChild(availableGroup);
-    }
-    
-    // If no versions available, show message
-    if (availableVersions.length === 0 && installedVersions.length === 0) {
+    } catch (error) {
+        console.error('Failed to refresh system status:', error);
         const option = document.createElement('option');
         option.value = '';
-        option.textContent = 'No versions available';
+        option.textContent = 'Error loading versions';
         option.disabled = true;
         versionSelect.appendChild(option);
     }
@@ -1793,15 +2191,27 @@ function exportLogs() {
 }
 
 // Global functions for downloads
-async function downloadVersion(loader, version) {
+async function downloadVersion(loader, version, event) {
     try {
-        console.log(`Downloading ${loader} version ${version}...`);
+        console.log(`=== DOWNLOADING ${loader.toUpperCase()} ${version} ===`);
         
-        // Show loading state
-        const button = event.target.closest('button');
-        const originalText = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
-        button.disabled = true;
+        // Show download progress modal
+        showDownloadProgressModal(loader, version);
+        
+        // Update progress modal with initial status
+        updateDownloadProgress(0, 'Starting download...');
+        
+        // Show loading state on button (if called from button click)
+        let button = null;
+        let originalText = '';
+        if (event && event.target) {
+            button = event.target.closest('button');
+            if (button) {
+                originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+                button.disabled = true;
+            }
+        }
         
         let result;
         switch (loader) {
@@ -1824,22 +2234,118 @@ async function downloadVersion(loader, version) {
                 throw new Error(`Unknown loader: ${loader}`);
         }
         
+        console.log(`Download result for ${loader} ${version}:`, result);
+        
         if (result.success) {
+            // Show completion in progress modal
+            updateDownloadProgress(100, 'Download completed successfully!');
+            
+            // Wait a moment so user can see completion
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
             showNotification(`${loader} ${version} downloaded successfully!`, 'success');
-            // Refresh the downloads section
+            console.log(`Successfully downloaded ${loader} ${version}`);
+            
+            // Refresh the downloads section to show installed status
             await loadDownloadsData();
+            
+            // Refresh system status to update "missing" status
+            await updateSystemStatus();
+            
         } else {
-            throw new Error(result.error);
+            throw new Error(result.error || 'Download failed');
         }
     } catch (error) {
         console.error(`Failed to download ${loader} ${version}:`, error);
+        
+        // Show error in progress modal
+        updateDownloadProgress(0, `Error: ${error.message}`);
+        
+        // Wait a moment so user can see the error
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
         showNotification(`Failed to download ${loader} ${version}: ${error.message}`, 'error');
     } finally {
+        // Hide download progress modal
+        hideDownloadProgressModal();
+        
         // Restore button state
-        if (button) {
+        if (button && originalText) {
             button.innerHTML = originalText;
             button.disabled = false;
         }
+    }
+}
+
+function showDownloadProgressModal(loader, version) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('download-progress-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'download-progress-modal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-download"></i> Downloading ${loader} ${version}</h3>
+                </div>
+                <div class="modal-body">
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="download-progress-fill"></div>
+                        </div>
+                        <div class="progress-text" id="download-progress-text">Initializing download...</div>
+                    </div>
+                    <div class="download-details" id="download-details">
+                        <p>Downloading ${loader} server version ${version}...</p>
+                        <p>This may take a few minutes depending on your internet connection.</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    // Update modal content
+    const title = modal.querySelector('h3');
+    title.innerHTML = `<i class="fas fa-download"></i> Downloading ${loader} ${version}`;
+    
+    const progressText = modal.querySelector('#download-progress-text');
+    progressText.textContent = 'Initializing download...';
+    
+    const details = modal.querySelector('#download-details');
+    details.innerHTML = `
+        <p>Downloading ${loader} server version ${version}...</p>
+        <p>This may take a few minutes depending on your internet connection.</p>
+        <p><strong>Status:</strong> <span id="download-status">Starting...</span></p>
+    `;
+    
+    // Show modal
+    modal.classList.add('active');
+}
+
+function hideDownloadProgressModal() {
+    const modal = document.getElementById('download-progress-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function updateDownloadProgress(progress, status) {
+    const progressFill = document.getElementById('download-progress-fill');
+    const progressText = document.getElementById('download-progress-text');
+    const downloadStatus = document.getElementById('download-status');
+    
+    if (progressFill) {
+        progressFill.style.width = `${progress}%`;
+    }
+    
+    if (progressText) {
+        progressText.textContent = `${progress}% - ${status}`;
+    }
+    
+    if (downloadStatus) {
+        downloadStatus.textContent = status;
     }
 }
 
@@ -1871,4 +2377,7 @@ window.filterLogs = filterLogs;
 window.refreshLogs = refreshLogs;
 window.clearLogs = clearLogs;
 window.exportLogs = exportLogs;
-window.downloadVersion = downloadVersion; 
+window.downloadVersion = downloadVersion;
+window.showDownloadProgressModal = showDownloadProgressModal;
+window.hideDownloadProgressModal = hideDownloadProgressModal;
+window.updateDownloadProgress = updateDownloadProgress; 

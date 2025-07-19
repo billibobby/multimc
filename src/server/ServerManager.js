@@ -106,10 +106,18 @@ class ServerManager extends EventEmitter {
         console.log(`Created mods directory for ${loaderInfo.name} server`);
       }
       
+      // Validate required files are installed before proceeding
+      await this.validateRequiredFiles(config);
+      
       // Determine server jar path based on loader
       let serverJarPath;
       if (config.type === 'vanilla') {
         serverJarPath = path.join(os.homedir(), '.multimc-hub', 'minecraft', `server-${config.version}.jar`);
+      } else if (config.type === 'fabric') {
+        // Fabric servers are in directories with the server JAR inside
+        const fabricDir = path.join(os.homedir(), '.multimc-hub', 'loaders', config.type, `fabric-${config.version}`);
+        const [minecraftVersion] = config.version.split('-');
+        serverJarPath = path.join(fabricDir, `server-${minecraftVersion}.jar`);
       } else {
         serverJarPath = path.join(os.homedir(), '.multimc-hub', 'loaders', config.type, `${config.type}-${config.version}.jar`);
       }
@@ -144,9 +152,17 @@ class ServerManager extends EventEmitter {
         }
       }
       
-      // Copy server jar to server directory
-      const localJarPath = path.join(serverDir, 'server.jar');
-      await fs.copy(serverJarPath, localJarPath);
+      // Copy server files to server directory
+      if (config.type === 'fabric') {
+        // For Fabric, copy the entire directory structure
+        const fabricDir = path.join(os.homedir(), '.multimc-hub', 'loaders', config.type, `fabric-${config.version}`);
+        await fs.copy(fabricDir, serverDir);
+        console.log(`Copied Fabric server files from ${fabricDir} to ${serverDir}`);
+      } else {
+        // For other loaders, copy just the server JAR
+        const localJarPath = path.join(serverDir, 'server.jar');
+        await fs.copy(serverJarPath, localJarPath);
+      }
       
       // Create server properties
       const serverProperties = this.createServerProperties(config);
@@ -162,10 +178,17 @@ class ServerManager extends EventEmitter {
       
       // Start the server process
       const javaPath = await this.getJavaPath();
+      let jarFile = 'server.jar';
+      
+      // For Fabric servers, use the fabric-server-launch.jar
+      if (config.type === 'fabric') {
+        jarFile = 'fabric-server-launch.jar';
+      }
+      
       const serverProcess = spawn(javaPath, [
         '-Xmx2G',
         '-Xms1G',
-        '-jar', 'server.jar',
+        '-jar', jarFile,
         'nogui'
       ], {
         cwd: serverDir,
@@ -509,6 +532,81 @@ rcon.port=25575
 rcon.password=
 max-chained-neighbor-updates=1000000
 `;
+  }
+
+  async validateRequiredFiles(config) {
+    console.log(`Validating required files for ${config.type} server version ${config.version}...`);
+    
+    const fs = require('fs-extra');
+    const path = require('path');
+    const os = require('os');
+    
+    // Get the Minecraft version from the loader version
+    let minecraftVersion;
+    if (config.type === 'vanilla') {
+      minecraftVersion = config.version;
+    } else {
+      // For modded servers, extract Minecraft version from loader version
+      minecraftVersion = config.version.split('-')[0];
+    }
+    
+    // Check if Minecraft version is installed
+    const minecraftVersionPath = path.join(os.homedir(), '.multimc-hub', 'minecraft', 'versions', minecraftVersion);
+    const minecraftJarPath = path.join(minecraftVersionPath, `${minecraftVersion}.jar`);
+    const minecraftJsonPath = path.join(minecraftVersionPath, `${minecraftVersion}.json`);
+    
+    console.log(`Checking Minecraft version ${minecraftVersion} at: ${minecraftVersionPath}`);
+    
+    if (!await fs.pathExists(minecraftVersionPath)) {
+      throw new Error(`Minecraft version ${minecraftVersion} is not installed. Please download it first.`);
+    }
+    
+    if (!await fs.pathExists(minecraftJarPath)) {
+      throw new Error(`Minecraft JAR file for version ${minecraftVersion} is missing. Please download it first.`);
+    }
+    
+    if (!await fs.pathExists(minecraftJsonPath)) {
+      throw new Error(`Minecraft JSON file for version ${minecraftVersion} is missing. Please download it first.`);
+    }
+    
+    console.log(`✅ Minecraft version ${minecraftVersion} is properly installed`);
+    
+    // Check if loader is installed (for modded servers)
+    if (config.type !== 'vanilla') {
+      const loaderPath = path.join(os.homedir(), '.multimc-hub', 'loaders', config.type, `${config.type}-${config.version}`);
+      
+      console.log(`Checking ${config.type} loader at: ${loaderPath}`);
+      
+      if (!await fs.pathExists(loaderPath)) {
+        throw new Error(`${config.type} loader version ${config.version} is not installed. Please download it first.`);
+      }
+      
+      // For Fabric, check for the specific server files
+      if (config.type === 'fabric') {
+        const fabricServerJar = path.join(loaderPath, `server-${minecraftVersion}.jar`);
+        const fabricLaunchJar = path.join(loaderPath, 'fabric-server-launch.jar');
+        
+        if (!await fs.pathExists(fabricServerJar)) {
+          throw new Error(`Fabric server JAR for ${config.version} is missing. Please download it first.`);
+        }
+        
+        if (!await fs.pathExists(fabricLaunchJar)) {
+          throw new Error(`Fabric server launch JAR for ${config.version} is missing. Please download it first.`);
+        }
+        
+        console.log(`✅ Fabric loader ${config.version} is properly installed`);
+      } else {
+        // For other loaders, check for the main JAR file
+        const loaderJarPath = path.join(loaderPath, `${config.type}-${config.version}.jar`);
+        if (!await fs.pathExists(loaderJarPath)) {
+          throw new Error(`${config.type} loader JAR for ${config.version} is missing. Please download it first.`);
+        }
+        
+        console.log(`✅ ${config.type} loader ${config.version} is properly installed`);
+      }
+    }
+    
+    console.log(`✅ All required files for ${config.type} server version ${config.version} are installed`);
   }
 
   async getJavaPath() {
