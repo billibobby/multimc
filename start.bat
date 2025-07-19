@@ -44,6 +44,8 @@ if not exist "node_modules" (
     if %errorlevel% neq 0 (
         echo ERROR: Failed to install dependencies!
         echo.
+        echo Try running as administrator or check your internet connection.
+        echo.
         pause
         exit /b 1
     )
@@ -99,10 +101,32 @@ if %errorlevel% equ 0 (
     echo.
 )
 
+REM Check for port conflicts
+echo Checking for port conflicts...
+netstat -an | find "3001" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo WARNING: Port 3001 is in use - MultiMC Hub will use alternative ports
+)
+netstat -an | find "3002" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo WARNING: Port 3002 is in use - MultiMC Hub will use alternative ports
+)
+netstat -an | find "3003" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo WARNING: Port 3003 is in use - MultiMC Hub will use alternative ports
+)
+
 REM Start the application
 echo Launching MultiMC Hub...
 echo.
 echo Please wait while the application loads...
+echo.
+echo If the app doesn't start or you see errors:
+echo 1. Run troubleshoot-windows.bat to diagnose issues
+echo 2. Try running as administrator
+echo 3. Check if your antivirus is blocking the app
+echo.
+echo Press Ctrl+C to stop the app when it's running.
 echo.
 echo ========================================
 echo.
