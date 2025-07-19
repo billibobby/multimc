@@ -530,7 +530,7 @@ class LoaderManager {
         case 'fabric':
           // Look for fabric-* directories that contain server files
           const fabricDirs = files.filter(file => 
-            !file.includes('.') && file.startsWith('fabric-')
+            !file.includes('.jar') && file.startsWith('fabric-')
           );
           
           console.log(`Found fabric directories:`, fabricDirs);
