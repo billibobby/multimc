@@ -1579,7 +1579,7 @@ async function downloadForge(version, event) {
             button = event.target.closest('button');
             if (button) {
                 originalText = button.innerHTML;
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+                button.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i> Downloading...';
                 button.disabled = true;
             }
         }
@@ -1861,7 +1861,7 @@ async function refreshStatus() {
     const refreshButton = document.querySelector('.quick-action-btn[onclick="refreshStatus()"]');
     if (refreshButton) {
         const originalText = refreshButton.innerHTML;
-        refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Refreshing...</span>';
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i><span>Refreshing...</span>';
         refreshButton.disabled = true;
         
         try {
@@ -1939,7 +1939,7 @@ async function refreshNetworkStatus() {
     const refreshButton = document.querySelector('#network .network-header .btn');
     if (refreshButton) {
         const originalText = refreshButton.innerHTML;
-        refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i> Refreshing...';
         refreshButton.disabled = true;
         
         try {
@@ -2030,7 +2030,7 @@ function getServerStatusIcon(status) {
         case 'running':
             return 'fas fa-play-circle';
         case 'starting':
-            return 'fas fa-spinner fa-spin';
+            return 'fas fa-sync-alt refresh-spinning';
         case 'stopped':
             return 'fas fa-stop-circle';
         case 'error':
@@ -2284,7 +2284,7 @@ async function refreshLogs() {
     const refreshButton = document.querySelector('#logs .logs-controls .btn[onclick="refreshLogs()"]');
     if (refreshButton) {
         const originalText = refreshButton.innerHTML;
-        refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i> Refreshing...';
         refreshButton.disabled = true;
         
         try {
@@ -2354,7 +2354,7 @@ async function downloadVersion(loader, version, event) {
             button = event.target.closest('button');
             if (button) {
                 originalText = button.innerHTML;
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+                button.innerHTML = '<i class="fas fa-sync-alt refresh-spinning"></i> Downloading...';
                 button.disabled = true;
             }
         }
