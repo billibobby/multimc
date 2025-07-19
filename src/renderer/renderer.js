@@ -674,6 +674,16 @@ async function loadDownloadsData() {
             console.log('Refreshing system status for downloads...');
             systemStatus = await ipcRenderer.invoke('get-system-status');
             console.log('System status refreshed for downloads:', systemStatus);
+            
+            // Debug: Check specific loader data
+            if (systemStatus && systemStatus.checks) {
+                Object.keys(systemStatus.checks).forEach(loader => {
+                    const loaderData = systemStatus.checks[loader];
+                    if (loaderData && loaderData.installedVersions) {
+                        console.log(`${loader} installed versions:`, loaderData.installedVersions);
+                    }
+                });
+            }
         } catch (error) {
             console.error('Failed to refresh system status for downloads:', error);
         }
@@ -2277,11 +2287,19 @@ async function downloadVersion(loader, version, event) {
             systemStatus = await ipcRenderer.invoke('get-system-status');
             console.log('Updated system status:', systemStatus);
             
+            // Wait a moment for file system to settle
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             // Refresh the downloads section to show installed status
+            console.log('Refreshing downloads data...');
             await loadDownloadsData();
             
             // Update system status display
             updateSystemStatus();
+            
+            // Force a complete refresh of the downloads tab
+            console.log('Forcing complete downloads refresh...');
+            await refreshDownloads();
             
         } else {
             throw new Error(result.error || 'Download failed');
