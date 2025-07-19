@@ -2160,6 +2160,83 @@ body {
     font-size: 16px;
 }
 
+/* Login Modal Styles */
+.login-container {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.login-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.login-tabs .tab-btn {
+    flex: 1;
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.login-tabs .tab-btn.active {
+    color: #4fc3f7;
+    border-bottom: 2px solid #4fc3f7;
+}
+
+.login-tabs .tab-btn:hover {
+    color: #ffffff;
+}
+
+.login-tab-content {
+    display: none;
+}
+
+.login-tab-content .form-group {
+    margin-bottom: 20px;
+}
+
+.login-tab-content .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+.login-tab-content .form-group input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.login-tab-content .form-group input:focus {
+    outline: none;
+    border-color: #4fc3f7;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.login-tab-content .form-group input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.login-tab-content .btn {
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 10px;
+}
+
 .modrinth-actions {
     display: flex;
     gap: 10px;

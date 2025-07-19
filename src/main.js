@@ -256,11 +256,23 @@ ipcMain.handle('get-server-status', () => {
 });
 
 ipcMain.handle('get-user-profile', async () => {
-  logger.debug('Getting user profile');
-  if (!networkManager) {
-    return { error: 'Network manager not initialized' };
+  try {
+    logger.debug('Getting user profile');
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    const profile = await networkManager.getCurrentProfile();
+    if (profile) {
+      return { success: true, profile };
+    } else {
+      // Create default profile if none exists
+      const defaultProfile = await networkManager.createDefaultProfile();
+      return { success: true, profile: defaultProfile };
+    }
+  } catch (error) {
+    logger.error('Failed to get user profile:', error);
+    return { success: false, error: error.message };
   }
-  return await networkManager.getCurrentProfile();
 });
 
 ipcMain.handle('save-user-profile', async (event, profile) => {
@@ -273,6 +285,78 @@ ipcMain.handle('save-user-profile', async (event, profile) => {
     return { success: true };
   } catch (error) {
     logger.error('Failed to save user profile:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Authentication IPC handlers
+ipcMain.handle('check-authentication', async () => {
+  try {
+    logger.debug('Checking authentication');
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    
+    const profile = await networkManager.getCurrentProfile();
+    if (profile && profile.username) {
+      return { success: true, authenticated: true, profile };
+    } else {
+      return { success: true, authenticated: false };
+    }
+  } catch (error) {
+    logger.error('Failed to check authentication:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('authenticate-user', async (event, username, password) => {
+  try {
+    logger.debug('Authenticating user', { username });
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    
+    const profile = await networkManager.getCurrentProfile();
+    if (profile && profile.username === username && profile.password === password) {
+      return { success: true, profile };
+    } else {
+      return { success: false, error: 'Invalid username or password' };
+    }
+  } catch (error) {
+    logger.error('Failed to authenticate user:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('create-user-account', async (event, username, displayName, password) => {
+  try {
+    logger.debug('Creating user account', { username, displayName });
+    if (!networkManager) {
+      return { success: false, error: 'Network manager not initialized' };
+    }
+    
+    // Check if username already exists
+    const existingProfile = await networkManager.getCurrentProfile();
+    if (existingProfile && existingProfile.username === username) {
+      return { success: false, error: 'Username already exists' };
+    }
+    
+    // Create new profile
+    const newProfile = {
+      id: require('crypto').randomUUID(),
+      username: username,
+      displayName: displayName,
+      name: displayName,
+      password: password, // In a real app, this should be hashed
+      platform: require('os').platform(),
+      createdAt: new Date().toISOString(),
+      lastSeen: new Date().toISOString()
+    };
+    
+    await networkManager.saveProfile(newProfile);
+    return { success: true, profile: newProfile };
+  } catch (error) {
+    logger.error('Failed to create user account:', error);
     return { success: false, error: error.message };
   }
 });

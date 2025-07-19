@@ -13,6 +13,7 @@ let selectedLogFile = null;
 let currentLogType = 'app'; // 'app' or 'server'
 let serverLogs = [];
 let selectedServerLog = null;
+let isAuthenticated = false;
 
 // Game Activity Functions
 let gameActivityLog = [];
@@ -243,12 +244,13 @@ async function copyMinecraftVersion(installationPath, version) {
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
-    setupEventListeners();
-    loadInitialData();
+    console.log('DOM loaded, initializing MultiMC Hub with authentication...');
+    initializeAppWithAuth();
 });
 
 function initializeApp() {
+    console.log('Initializing MultiMC Hub application...');
+    
     // Set up tab navigation
     tabItems.forEach(item => {
         item.addEventListener('click', async (e) => {
@@ -257,6 +259,20 @@ function initializeApp() {
             await switchTab(tab);
         });
     });
+    
+    // Set up event listeners
+    setupEventListeners();
+    
+    // Load initial data
+    loadInitialData();
+    
+    console.log('MultiMC Hub application initialized successfully');
+}
+
+// Modified initialization to check authentication first
+function initializeAppWithAuth() {
+    console.log('Starting MultiMC Hub with authentication check...');
+    checkAuthentication();
 }
 
 function setupEventListeners() {
@@ -1285,20 +1301,8 @@ async function saveProfile() {
         showNotification('Profile updated successfully!', 'success');
         closeModal('profile-modal');
         
-        // Broadcast profile update to peers
-        try {
-            await fetch('http://localhost:3003/api/message', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    targetId: 'broadcast',
-                    message: 'profile-updated',
-                    data: { peerId: userProfile.id, profile: updatedProfile }
-                })
-            });
-        } catch (error) {
-            console.error('Failed to broadcast profile update:', error);
-        }
+        // Update the user profile display
+        updateUserProfileDisplay();
     } else {
         showNotification('Failed to update profile', 'error');
     }
@@ -4684,4 +4688,119 @@ function formatFileSize(bytes) {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Authentication Functions
+function switchLoginTab(tab) {
+    // Hide all tab contents
+    document.querySelectorAll('.login-tab-content').forEach(content => {
+        content.style.display = 'none';
+    });
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.login-tabs .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    const selectedTab = document.getElementById(`${tab}-tab`);
+    if (selectedTab) {
+        selectedTab.style.display = 'block';
+    }
+    
+    // Add active class to selected tab
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+}
+
+async function loginUser() {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+    
+    if (!username || !password) {
+        showNotification('Please fill in all fields', 'warning');
+        return;
+    }
+    
+    try {
+        const result = await ipcRenderer.invoke('authenticate-user', username, password);
+        if (result.success) {
+            isAuthenticated = true;
+            userProfile = result.profile;
+            updateUserProfileDisplay();
+            closeModal('login-modal');
+            showNotification('Login successful!', 'success');
+            
+            // Initialize the app after successful login
+            await initializeApp();
+        } else {
+            showNotification(result.error || 'Login failed', 'error');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showNotification('Login failed: ' + error.message, 'error');
+    }
+}
+
+async function createAccount() {
+    const username = document.getElementById('create-username').value.trim();
+    const displayName = document.getElementById('create-display-name').value.trim();
+    const password = document.getElementById('create-password').value.trim();
+    const confirmPassword = document.getElementById('create-confirm-password').value.trim();
+    
+    if (!username || !displayName || !password || !confirmPassword) {
+        showNotification('Please fill in all fields', 'warning');
+        return;
+    }
+    
+    if (password !== confirmPassword) {
+        showNotification('Passwords do not match', 'error');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showNotification('Password must be at least 6 characters long', 'error');
+        return;
+    }
+    
+    try {
+        const result = await ipcRenderer.invoke('create-user-account', username, displayName, password);
+        if (result.success) {
+            isAuthenticated = true;
+            userProfile = result.profile;
+            updateUserProfileDisplay();
+            closeModal('login-modal');
+            showNotification('Account created successfully!', 'success');
+            
+            // Initialize the app after successful account creation
+            await initializeApp();
+        } else {
+            showNotification(result.error || 'Account creation failed', 'error');
+        }
+    } catch (error) {
+        console.error('Account creation error:', error);
+        showNotification('Account creation failed: ' + error.message, 'error');
+    }
+}
+
+// Check if user is already authenticated on app start
+async function checkAuthentication() {
+    try {
+        const result = await ipcRenderer.invoke('check-authentication');
+        if (result.success && result.authenticated) {
+            isAuthenticated = true;
+            userProfile = result.profile;
+            updateUserProfileDisplay();
+            closeModal('login-modal');
+            await initializeApp();
+        } else {
+            // Show login modal
+            document.getElementById('login-modal').classList.add('active');
+        }
+    } catch (error) {
+        console.error('Authentication check error:', error);
+        // Show login modal as fallback
+        document.getElementById('login-modal').classList.add('active');
+    }
 }
