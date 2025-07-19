@@ -754,7 +754,7 @@ async function refreshDownloads() {
     console.log('Refreshing downloads...');
     
     // Show visual refresh indicator
-    const refreshButton = document.querySelector('#downloads .downloads-header button');
+    const refreshButton = document.querySelector('#downloads .downloads-header .btn');
     if (refreshButton) {
         const originalText = refreshButton.innerHTML;
         refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
@@ -1911,7 +1911,7 @@ async function refreshNetworkStatus() {
     console.log('Refreshing network status...');
     
     // Show visual refresh indicator
-    const refreshButton = document.querySelector('#network .network-header button');
+    const refreshButton = document.querySelector('#network .network-header .btn');
     if (refreshButton) {
         const originalText = refreshButton.innerHTML;
         refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
@@ -2256,7 +2256,7 @@ function filterLogs() {
 
 async function refreshLogs() {
     // Show visual refresh indicator
-    const refreshButton = document.querySelector('#logs .logs-controls button[onclick="refreshLogs()"]');
+    const refreshButton = document.querySelector('#logs .logs-controls .btn[onclick="refreshLogs()"]');
     if (refreshButton) {
         const originalText = refreshButton.innerHTML;
         refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
