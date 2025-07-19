@@ -1253,6 +1253,20 @@ ipcMain.handle('get-modrinth-popular-mods', async () => {
   }
 });
 
+ipcMain.handle('get-modrinth-total-count', async () => {
+  try {
+    logger.debug('Getting Modrinth total mod count');
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const count = await modrinthManager.getTotalModCount();
+    return { success: true, count };
+  } catch (error) {
+    logger.error('Failed to get Modrinth total mod count:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('check-modrinth-compatibility', async (event, projectId, gameVersion, loader) => {
   try {
     logger.debug('Checking Modrinth mod compatibility', { projectId, gameVersion, loader });

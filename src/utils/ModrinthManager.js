@@ -154,9 +154,9 @@ class ModrinthManager extends EventEmitter {
       searchParams.append('index', filters.sortBy);
     }
     
-    if (filters.limit) {
-      searchParams.append('limit', filters.limit.toString());
-    }
+    // Default to 50 mods if no limit specified
+    const limit = filters.limit || 50;
+    searchParams.append('limit', limit.toString());
     
     if (filters.offset) {
       searchParams.append('offset', filters.offset.toString());
@@ -175,6 +175,17 @@ class ModrinthManager extends EventEmitter {
     } catch (error) {
       console.error('Failed to search mods:', error);
       throw error;
+    }
+  }
+
+  // Get total mod count for statistics
+  async getTotalModCount() {
+    try {
+      const result = await this.rateLimitedRequest('/search?facets=[["project_type:mod"]]&limit=1');
+      return result.total_hits || 0;
+    } catch (error) {
+      console.error('Failed to get total mod count:', error);
+      return 0;
     }
   }
 
@@ -407,9 +418,9 @@ class ModrinthManager extends EventEmitter {
   }
 
   // Get featured mods
-  async getFeaturedMods() {
+  async getFeaturedMods(limit = 50) {
     try {
-      return await this.rateLimitedRequest('/search?facets=[["project_type:mod"]]&limit=20&index=featured');
+      return await this.rateLimitedRequest(`/search?facets=[["project_type:mod"]]&limit=${limit}&index=featured`);
     } catch (error) {
       console.error('Failed to get featured mods:', error);
       throw error;
@@ -417,9 +428,9 @@ class ModrinthManager extends EventEmitter {
   }
 
   // Get trending mods
-  async getTrendingMods() {
+  async getTrendingMods(limit = 50) {
     try {
-      return await this.rateLimitedRequest('/search?facets=[["project_type:mod"]]&limit=20&index=updated');
+      return await this.rateLimitedRequest(`/search?facets=[["project_type:mod"]]&limit=${limit}&index=updated`);
     } catch (error) {
       console.error('Failed to get trending mods:', error);
       throw error;
@@ -427,9 +438,9 @@ class ModrinthManager extends EventEmitter {
   }
 
   // Get popular mods
-  async getPopularMods() {
+  async getPopularMods(limit = 50) {
     try {
-      return await this.rateLimitedRequest('/search?facets=[["project_type:mod"]]&limit=20&index=downloads');
+      return await this.rateLimitedRequest(`/search?facets=[["project_type:mod"]]&limit=${limit}&index=downloads`);
     } catch (error) {
       console.error('Failed to get popular mods:', error);
       throw error;

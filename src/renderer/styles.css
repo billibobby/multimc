@@ -2097,6 +2097,34 @@ body {
     margin-bottom: 20px;
 }
 
+.modrinth-title-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.mod-count-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.mod-count-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+}
+
+.mod-count-value {
+    color: #4caf50;
+    font-weight: 600;
+    font-size: 14px;
+}
+
 .modrinth-actions {
     display: flex;
     gap: 10px;
@@ -2199,6 +2227,19 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
+}
+
+.mods-count-display {
+    grid-column: 1 / -1;
+    padding: 10px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    margin-bottom: 15px;
 }
 
 .mod-card {

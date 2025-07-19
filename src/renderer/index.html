@@ -306,7 +306,13 @@
                 <div id="modrinth" class="tab-content">
                     <div class="modrinth-container">
                         <div class="modrinth-header">
-                            <h2>Modrinth Mod Browser</h2>
+                            <div class="modrinth-title-section">
+                                <h2>Modrinth Mod Browser</h2>
+                                <div class="mod-count-display">
+                                    <span class="mod-count-label">Total Mods:</span>
+                                    <span class="mod-count-value" id="total-mod-count">Loading...</span>
+                                </div>
+                            </div>
                             <div class="modrinth-actions">
                                 <button class="btn btn-primary" onclick="refreshModrinthData()">
                                     <i class="fas fa-sync"></i> Refresh

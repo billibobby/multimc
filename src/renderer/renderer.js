@@ -3556,9 +3556,24 @@ let currentModData = null;
 // Initialize Modrinth browser when tab is loaded
 function loadModrinthData() {
     loadModrinthFilters();
+    loadTotalModCount();
     loadFeaturedMods();
     loadTrendingMods();
     loadPopularMods();
+}
+
+async function loadTotalModCount() {
+    try {
+        const result = await ipcRenderer.invoke('get-modrinth-total-count');
+        if (result.success) {
+            document.getElementById('total-mod-count').textContent = formatNumber(result.count);
+        } else {
+            document.getElementById('total-mod-count').textContent = 'Unknown';
+        }
+    } catch (error) {
+        console.error('Error loading total mod count:', error);
+        document.getElementById('total-mod-count').textContent = 'Error';
+    }
 }
 
 async function loadModrinthFilters() {
@@ -3647,6 +3662,9 @@ function displayMods(mods, containerId) {
         return;
     }
 
+    // Add mod count display at the top
+    const modCountHtml = `<div class="mods-count-display">Showing ${mods.length} mods</div>`;
+
     const modsHtml = mods.map(mod => `
         <div class="mod-card" onclick="showModDetails('${mod.project_id}')">
             <div class="mod-card-header">
@@ -3673,7 +3691,7 @@ function displayMods(mods, containerId) {
         </div>
     `).join('');
 
-    container.innerHTML = modsHtml;
+    container.innerHTML = modCountHtml + modsHtml;
 }
 
 function switchModrinthSection(section) {
@@ -3698,10 +3716,17 @@ async function searchModrinthMods() {
     }
     
     try {
+        // Increase limit for search results
+        filters.limit = 100;
         const result = await ipcRenderer.invoke('search-modrinth-mods', query, filters);
         if (result.success) {
             displayMods(result.results.hits, 'search-mods');
             switchModrinthSection('search');
+            
+            // Show search result count
+            const totalResults = result.results.total_hits || 0;
+            const displayedResults = result.results.hits?.length || 0;
+            showNotification(`Found ${formatNumber(totalResults)} mods (showing ${displayedResults})`, 'info');
         } else {
             showNotification('Failed to search mods', 'error');
         }
