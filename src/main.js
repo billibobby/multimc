@@ -410,12 +410,174 @@ ipcMain.handle('get-server-log-files', async () => {
   }
 });
 
+// Mod management handlers
+ipcMain.handle('get-server-mods', async (event, serverId) => {
+  try {
+    logger.debug('Getting server mods', { serverId });
+    
+    if (!serverManager) {
+      return { success: false, error: 'Server manager not initialized' };
+    }
+    
+    const server = serverManager.activeServers.get(serverId);
+    if (!server) {
+      return { success: false, error: 'Server not found' };
+    }
+    
+    if (server.type !== 'forge') {
+      return { success: false, error: 'Mods are only supported on Forge servers' };
+    }
+    
+    const modsDir = path.join(server.directory, 'mods');
+    const mods = [];
+    
+    try {
+      const files = await fs.readdir(modsDir);
+      for (const file of files) {
+        if (file.endsWith('.jar')) {
+          const filePath = path.join(modsDir, file);
+          const stats = await fs.stat(filePath);
+          mods.push({
+            name: file,
+            size: stats.size,
+            sizeFormatted: formatFileSize(stats.size),
+            lastModified: stats.mtime,
+            path: filePath
+          });
+        }
+      }
+    } catch (error) {
+      // Mods directory might not exist yet
+      console.log(`No mods directory for server ${server.name}:`, error.message);
+    }
+    
+    return { success: true, mods };
+  } catch (error) {
+    logger.error('Failed to get server mods:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('upload-mod', async (event, serverId, modPath) => {
+  try {
+    logger.debug('Uploading mod to server', { serverId, modPath });
+    
+    if (!serverManager) {
+      return { success: false, error: 'Server manager not initialized' };
+    }
+    
+    const server = serverManager.activeServers.get(serverId);
+    if (!server) {
+      return { success: false, error: 'Server not found' };
+    }
+    
+    if (server.type !== 'forge') {
+      return { success: false, error: 'Mods are only supported on Forge servers' };
+    }
+    
+    // Check if mod file exists
+    if (!await fs.pathExists(modPath)) {
+      return { success: false, error: 'Mod file not found' };
+    }
+    
+    // Get mod filename
+    const modFileName = path.basename(modPath);
+    const modsDir = path.join(server.directory, 'mods');
+    const targetPath = path.join(modsDir, modFileName);
+    
+    // Ensure mods directory exists
+    await fs.ensureDir(modsDir);
+    
+    // Copy mod to server
+    await fs.copy(modPath, targetPath);
+    
+    logger.info('Mod uploaded successfully', { serverId, modFileName });
+    return { success: true, modName: modFileName };
+  } catch (error) {
+    logger.error('Failed to upload mod:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('remove-mod', async (event, serverId, modName) => {
+  try {
+    logger.debug('Removing mod from server', { serverId, modName });
+    
+    if (!serverManager) {
+      return { success: false, error: 'Server manager not initialized' };
+    }
+    
+    const server = serverManager.activeServers.get(serverId);
+    if (!server) {
+      return { success: false, error: 'Server not found' };
+    }
+    
+    if (server.type !== 'forge') {
+      return { success: false, error: 'Mods are only supported on Forge servers' };
+    }
+    
+    const modsDir = path.join(server.directory, 'mods');
+    const modPath = path.join(modsDir, modName);
+    
+    // Check if mod exists
+    if (!await fs.pathExists(modPath)) {
+      return { success: false, error: 'Mod not found' };
+    }
+    
+    // Remove mod
+    await fs.remove(modPath);
+    
+    logger.info('Mod removed successfully', { serverId, modName });
+    return { success: true };
+  } catch (error) {
+    logger.error('Failed to remove mod:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Helper function to format file size
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
 ipcMain.handle('select-directory', async () => {
-  logger.debug('Opening directory selector');
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openDirectory']
-  });
-  return result.filePaths[0];
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory']
+    });
+    
+    if (result.canceled) {
+      return { canceled: true };
+    }
+    
+    return { canceled: false, filePaths: result.filePaths };
+  } catch (error) {
+    logger.error('Failed to select directory:', error);
+    return { canceled: true, error: error.message };
+  }
+});
+
+ipcMain.handle('select-file', async (event, options) => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      title: options.title || 'Select File',
+      filters: options.filters || []
+    });
+    
+    if (result.canceled) {
+      return { canceled: true };
+    }
+    
+    return { canceled: false, filePaths: result.filePaths };
+  } catch (error) {
+    logger.error('Failed to select file:', error);
+    return { canceled: true, error: error.message };
+  }
 });
 
 ipcMain.handle('open-external', async (event, url) => {

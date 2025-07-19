@@ -526,13 +526,35 @@
             </div>
             <div class="modal-body">
                 <div id="server-details-content">
-                    <div class="loading-spinner"></div>
+                    <!-- Server details will be loaded here -->
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-danger" onclick="stopServer()">Stop Server</button>
-                <button class="btn btn-warning" onclick="transferHost()">Transfer Host</button>
-                <button class="btn btn-secondary" onclick="closeModal('server-details-modal')">Close</button>
+        </div>
+    </div>
+
+    <!-- Mod Manager Modal -->
+    <div id="mod-manager-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Mod Manager</h3>
+                <button class="modal-close" onclick="closeModal('mod-manager-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mod-manager-controls">
+                    <button class="btn btn-primary" onclick="uploadMod(selectedServerId)">
+                        <i class="fas fa-upload"></i> Upload Mod
+                    </button>
+                    <button class="btn btn-secondary" onclick="refreshMods()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+                <div class="mods-container">
+                    <div id="mods-list">
+                        <!-- Mods will be loaded here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>

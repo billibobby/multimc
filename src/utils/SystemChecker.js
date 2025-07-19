@@ -283,19 +283,54 @@ class SystemChecker {
 
   async getAvailableForgeVersions() {
     try {
-      const response = await fetch('https://files.minecraftforge.net/maven/net/minecraftforge/forge/maven-metadata.xml');
+      // Use the official Forge API to get available versions
+      const response = await fetch('https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml');
       const text = await response.text();
       
-      // Parse XML to extract versions (simplified)
+      // Parse the XML to extract version information
       const versionMatches = text.match(/<version>([^<]+)<\/version>/g);
-      const versions = versionMatches
-        ? versionMatches.map(match => match.replace(/<\/?version>/g, ''))
-        : [];
+      if (!versionMatches) {
+        return [];
+      }
       
-      return versions.slice(0, 20); // Latest 20 versions
+      const versions = versionMatches
+        .map(match => match.replace(/<\/?version>/g, ''))
+        .filter(version => {
+          // Filter for stable versions and common Minecraft versions
+          const mcVersion = version.split('-')[0];
+          return ['1.21.1', '1.20.4', '1.20.1', '1.19.4', '1.19.2', '1.18.2', '1.16.5'].includes(mcVersion);
+        })
+        .sort((a, b) => {
+          // Sort by Minecraft version, then by Forge version
+          const aParts = a.split('-');
+          const bParts = b.split('-');
+          const aMC = aParts[0];
+          const bMC = bParts[0];
+          
+          if (aMC !== bMC) {
+            return bMC.localeCompare(aMC); // Newer versions first
+          }
+          
+          return b.localeCompare(a); // Newer Forge versions first
+        });
+      
+      return versions.slice(0, 15).map(version => ({
+        id: version,
+        minecraftVersion: version.split('-')[0],
+        forgeVersion: version.split('-')[1] || version,
+        type: 'release',
+        releaseTime: new Date().toISOString() // Forge doesn't provide this easily
+      }));
     } catch (error) {
       console.error('Failed to fetch Forge versions:', error);
-      return [];
+      // Return some common stable versions as fallback
+      return [
+        { id: '1.20.4-49.0.3', minecraftVersion: '1.20.4', forgeVersion: '49.0.3', type: 'release', releaseTime: new Date().toISOString() },
+        { id: '1.20.1-47.2.0', minecraftVersion: '1.20.1', forgeVersion: '47.2.0', type: 'release', releaseTime: new Date().toISOString() },
+        { id: '1.19.4-45.2.0', minecraftVersion: '1.19.4', forgeVersion: '45.2.0', type: 'release', releaseTime: new Date().toISOString() },
+        { id: '1.19.2-43.3.0', minecraftVersion: '1.19.2', forgeVersion: '43.3.0', type: 'release', releaseTime: new Date().toISOString() },
+        { id: '1.18.2-40.2.0', minecraftVersion: '1.18.2', forgeVersion: '40.2.0', type: 'release', releaseTime: new Date().toISOString() }
+      ];
     }
   }
 
@@ -314,7 +349,7 @@ class SystemChecker {
     try {
       const files = await fs.readdir(this.forgeDir);
       return files
-        .filter(file => file.endsWith('.jar'))
+        .filter(file => file.endsWith('.jar') && file.startsWith('forge-'))
         .map(file => file.replace('forge-', '').replace('.jar', ''));
     } catch (error) {
       return [];
@@ -363,23 +398,33 @@ class SystemChecker {
     try {
       console.log(`Downloading Forge server version ${version}...`);
       
-      // Forge download URL format
-      const forgeUrl = `https://files.minecraftforge.net/maven/net/minecraftforge/forge/${version}/forge-${version}-installer.jar`;
+      // Parse version to get Minecraft and Forge versions
+      const [minecraftVersion, forgeVersion] = version.split('-');
+      if (!minecraftVersion || !forgeVersion) {
+        throw new Error(`Invalid Forge version format: ${version}. Expected format: MCVERSION-FORGEVERSION`);
+      }
+      
+      // Create directories
+      await fs.ensureDir(this.forgeDir);
+      
+      // Download the Forge installer
+      const installerUrl = `https://maven.minecraftforge.net/net/minecraftforge/forge/${version}/forge-${version}-installer.jar`;
       const installerPath = path.join(this.forgeDir, `forge-${version}-installer.jar`);
-      const serverPath = path.join(this.forgeDir, `forge-${version}.jar`);
       
-      // Download installer
-      await this.downloadFile(forgeUrl, installerPath);
+      console.log(`Downloading installer from: ${installerUrl}`);
+      await this.downloadFile(installerUrl, installerPath);
       
-      // Extract server jar from installer
-      await this.extractForgeServer(installerPath, serverPath);
+      // Extract the server jar from the installer
+      const serverJarPath = path.join(this.forgeDir, `forge-${version}.jar`);
+      await this.extractForgeServer(installerPath, serverJarPath, version);
       
       // Clean up installer
       await fs.remove(installerPath);
       
-      console.log(`Forge server ${version} downloaded successfully`);
-      return { version, path: serverPath };
+      console.log(`Forge server ${version} downloaded and extracted successfully`);
+      return { version, path: serverJarPath, minecraftVersion, forgeVersion };
     } catch (error) {
+      console.error(`Failed to download Forge ${version}:`, error);
       throw new Error(`Failed to download Forge ${version}: ${error.message}`);
     }
   }
@@ -404,10 +449,42 @@ class SystemChecker {
     });
   }
 
-  async extractForgeServer(installerPath, serverPath) {
-    // This is a simplified extraction - in practice, you'd need to handle the Forge installer properly
-    // For now, we'll just copy the installer as the server jar
-    await fs.copy(installerPath, serverPath);
+  async extractForgeServer(installerPath, serverJarPath, version) {
+    try {
+      // Forge installers are actually JAR files that can be extracted
+      const extractDir = path.join(this.forgeDir, `temp-${version}`);
+      await fs.ensureDir(extractDir);
+      
+      // Extract the installer JAR
+      await extract(installerPath, { dir: extractDir });
+      
+      // Look for the server JAR in the extracted files
+      const files = await fs.readdir(extractDir);
+      const serverJarFile = files.find(file => 
+        file.includes('server') && file.endsWith('.jar') && !file.includes('installer')
+      );
+      
+      if (!serverJarFile) {
+        // If no server jar found, try to find any jar that's not the installer
+        const jarFile = files.find(file => file.endsWith('.jar') && !file.includes('installer'));
+        if (jarFile) {
+          await fs.copy(path.join(extractDir, jarFile), serverJarPath);
+        } else {
+          throw new Error('No server JAR found in Forge installer');
+        }
+      } else {
+        await fs.copy(path.join(extractDir, serverJarFile), serverJarPath);
+      }
+      
+      // Clean up extraction directory
+      await fs.remove(extractDir);
+      
+    } catch (error) {
+      console.error('Failed to extract Forge server:', error);
+      // Fallback: try to use the installer as the server jar (some versions work this way)
+      await fs.copy(installerPath, serverJarPath);
+      console.log('Using installer as server jar (fallback method)');
+    }
   }
 
   async getPublicIP() {

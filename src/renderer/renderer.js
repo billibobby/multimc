@@ -378,9 +378,17 @@ function updateServerStatus() {
                         <div class="server-info-value">${server.port}</div>
                     </div>
                     <div class="server-info-item">
-                        <div class="server-info-label">Host</div>
-                        <div class="server-info-value">${server.hostId.substring(0, 8)}...</div>
+                        <div class="server-info-label">Max Players</div>
+                        <div class="server-info-value">${server.maxPlayers}</div>
                     </div>
+                </div>
+                <div class="server-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); copyServerAddress('${server.hostAddress}:${server.port}')">
+                        <i class="fas fa-copy"></i> Copy Address
+                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); takeOverHost('${server.id}')">
+                        <i class="fas fa-exchange-alt"></i> Take Over
+                    </button>
                 </div>
             </div>
         `;
@@ -558,13 +566,39 @@ async function loadDownloadsData() {
             minecraftVersions.innerHTML = versionItems.join('');
         }
 
-        // Load Forge versions (simplified)
-        forgeVersions.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.7);">
-                <i class="fas fa-tools" style="font-size: 48px; margin-bottom: 20px;"></i>
-                <p>Forge versions will be available soon</p>
-            </div>
-        `;
+        // Load Forge versions
+        if (systemStatus && systemStatus.checks.forge) {
+            const versions = systemStatus.checks.forge.availableVersions || [];
+            const installed = systemStatus.checks.forge.installedVersions || [];
+            
+            const versionItems = versions.slice(0, 10).map(version => {
+                const isInstalled = installed.includes(version.id);
+                const displayName = version.minecraftVersion ? 
+                    `Forge ${version.minecraftVersion}-${version.forgeVersion}` : 
+                    `Forge ${version.id}`;
+                return `
+                    <div class="version-item">
+                        <div class="version-info">
+                            <div class="version-name">${displayName}</div>
+                            <div class="version-date">Minecraft ${version.minecraftVersion || 'Unknown'}</div>
+                        </div>
+                        <button class="btn btn-sm ${isInstalled ? 'btn-secondary' : 'btn-primary'}" 
+                                onclick="downloadForge('${version.id}')" 
+                                ${isInstalled ? 'disabled' : ''}>
+                            ${isInstalled ? 'Installed' : 'Download'}
+                        </button>
+                    </div>
+                `;
+            });
+            forgeVersions.innerHTML = versionItems.join('');
+        } else {
+            forgeVersions.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.7);">
+                    <i class="fas fa-tools" style="font-size: 48px; margin-bottom: 20px;"></i>
+                    <p>Loading Forge versions...</p>
+                </div>
+            `;
+        }
     } catch (error) {
         console.error('Failed to load downloads data:', error);
     }
@@ -721,8 +755,129 @@ function showServerDetails(serverId) {
                 <div class="status-label">Host Address</div>
                 <div class="status-value">${server.hostAddress}:${server.port}</div>
             </div>
+            ${server.type === 'forge' ? `
+                <div class="status-item">
+                    <div class="status-label">Mods</div>
+                    <div class="status-value">
+                        <button class="btn btn-sm btn-primary" onclick="showModManager('${server.id}')">
+                            <i class="fas fa-puzzle-piece"></i> Manage Mods
+                        </button>
+                    </div>
+                </div>
+            ` : ''}
         </div>
     `;
+}
+
+function showModManager(serverId) {
+    const modal = document.getElementById('mod-manager-modal');
+    modal.classList.add('active');
+    
+    loadServerMods(serverId);
+}
+
+async function loadServerMods(serverId) {
+    const modsList = document.getElementById('mods-list');
+    modsList.innerHTML = '<div class="loading-spinner"></div>';
+    
+    try {
+        const result = await ipcRenderer.invoke('get-server-mods', serverId);
+        if (result.success) {
+            if (result.mods.length === 0) {
+                modsList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.7);">
+                        <i class="fas fa-puzzle-piece" style="font-size: 48px; margin-bottom: 20px;"></i>
+                        <p>No mods installed</p>
+                        <p>Upload mods to get started</p>
+                    </div>
+                `;
+            } else {
+                const modItems = result.mods.map(mod => `
+                    <div class="mod-item">
+                        <div class="mod-info">
+                            <div class="mod-name">${mod.name}</div>
+                            <div class="mod-details">
+                                <span class="mod-size">${mod.sizeFormatted}</span>
+                                <span class="mod-date">${new Date(mod.lastModified).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <div class="mod-actions">
+                            <button class="btn btn-sm btn-danger" onclick="removeMod('${serverId}', '${mod.name}')">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                `);
+                modsList.innerHTML = modItems.join('');
+            }
+        } else {
+            modsList.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.7);">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px;"></i>
+                    <p>Failed to load mods</p>
+                    <p>${result.error}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Failed to load server mods:', error);
+        modsList.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.7);">
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px;"></i>
+                <p>Failed to load mods</p>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+async function uploadMod(serverId) {
+    try {
+        const result = await ipcRenderer.invoke('select-file', {
+            title: 'Select Mod File',
+            filters: [
+                { name: 'Mod Files', extensions: ['jar'] },
+                { name: 'All Files', extensions: ['*'] }
+            ]
+        });
+        
+        if (result.canceled) return;
+        
+        const modPath = result.filePaths[0];
+        const uploadResult = await ipcRenderer.invoke('upload-mod', serverId, modPath);
+        
+        if (uploadResult.success) {
+            showNotification(`Mod ${uploadResult.modName} uploaded successfully!`, 'success');
+            loadServerMods(serverId);
+        } else {
+            showNotification(`Failed to upload mod: ${uploadResult.error}`, 'error');
+        }
+    } catch (error) {
+        showNotification(`Error uploading mod: ${error.message}`, 'error');
+    }
+}
+
+async function removeMod(serverId, modName) {
+    if (!confirm(`Are you sure you want to remove ${modName}?`)) return;
+    
+    try {
+        const result = await ipcRenderer.invoke('remove-mod', serverId, modName);
+        
+        if (result.success) {
+            showNotification(`Mod ${modName} removed successfully!`, 'success');
+            loadServerMods(serverId);
+        } else {
+            showNotification(`Failed to remove mod: ${result.error}`, 'error');
+        }
+    } catch (error) {
+        showNotification(`Error removing mod: ${error.message}`, 'error');
+    }
+}
+
+async function refreshMods() {
+    if (selectedServerId) {
+        await loadServerMods(selectedServerId);
+    }
 }
 
 function closeModal(modalId) {
@@ -1514,6 +1669,10 @@ window.refreshStatus = refreshStatus;
 window.refreshNetworkStatus = refreshNetworkStatus;
 window.showNetworkInfo = showNetworkInfo;
 window.showServerDetails = showServerDetails;
+window.showModManager = showModManager;
+window.uploadMod = uploadMod;
+window.removeMod = removeMod;
+window.refreshMods = refreshMods;
 window.selectLogFile = selectLogFile;
 window.selectServerLog = selectServerLog;
 window.switchLogTab = switchLogTab;

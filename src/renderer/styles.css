@@ -896,6 +896,68 @@ body {
     margin-left: 20px;
 }
 
+/* Mod Manager */
+.mod-manager-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mods-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.mod-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.mod-item:hover {
+    background: rgba(79, 195, 247, 0.1);
+    border-color: #4fc3f7;
+}
+
+.mod-info {
+    flex: 1;
+}
+
+.mod-name {
+    font-weight: 500;
+    color: #ffffff;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.mod-details {
+    display: flex;
+    gap: 15px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.mod-size {
+    color: #4fc3f7;
+}
+
+.mod-date {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.mod-actions {
+    display: flex;
+    gap: 8px;
+}
+
 /* Settings */
 .settings-grid {
     display: grid;
