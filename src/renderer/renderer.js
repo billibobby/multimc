@@ -3545,3 +3545,449 @@ async function declineInvite(inviteId) {
         showNotification('Failed to decline invite', 'error');
     }
 }
+
+// Modrinth Browser Functions
+let currentModrinthSection = 'featured';
+let currentModrinthFilters = {};
+let selectedModVersion = null;
+let currentModData = null;
+
+// Initialize Modrinth browser when tab is loaded
+function loadModrinthData() {
+    loadModrinthFilters();
+    loadFeaturedMods();
+    loadTrendingMods();
+    loadPopularMods();
+}
+
+async function loadModrinthFilters() {
+    try {
+        const [loaders, versions, categories] = await Promise.all([
+            ipcRenderer.invoke('get-modrinth-loaders'),
+            ipcRenderer.invoke('get-modrinth-game-versions'),
+            ipcRenderer.invoke('get-modrinth-categories')
+        ]);
+
+        if (loaders.success) {
+            const loaderSelect = document.getElementById('modrinth-loader-filter');
+            loaderSelect.innerHTML = '<option value="">All Loaders</option>';
+            loaders.loaders.forEach(loader => {
+                loaderSelect.innerHTML += `<option value="${loader.name}">${loader.name}</option>`;
+            });
+        }
+
+        if (versions.success) {
+            const versionSelect = document.getElementById('modrinth-version-filter');
+            versionSelect.innerHTML = '<option value="">All Versions</option>';
+            versions.versions.forEach(version => {
+                versionSelect.innerHTML += `<option value="${version.version}">${version.version}</option>`;
+            });
+        }
+
+        if (categories.success) {
+            const categorySelect = document.getElementById('modrinth-category-filter');
+            categorySelect.innerHTML = '<option value="">All Categories</option>';
+            categories.categories.forEach(category => {
+                categorySelect.innerHTML += `<option value="${category.name}">${category.name}</option>`;
+            });
+        }
+    } catch (error) {
+        console.error('Error loading Modrinth filters:', error);
+    }
+}
+
+async function loadFeaturedMods() {
+    try {
+        const result = await ipcRenderer.invoke('get-modrinth-featured-mods');
+        if (result.success) {
+            displayMods(result.mods.hits, 'featured-mods');
+        } else {
+            showNotification('Failed to load featured mods', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading featured mods:', error);
+        showNotification('Failed to load featured mods', 'error');
+    }
+}
+
+async function loadTrendingMods() {
+    try {
+        const result = await ipcRenderer.invoke('get-modrinth-trending-mods');
+        if (result.success) {
+            displayMods(result.mods.hits, 'trending-mods');
+        } else {
+            showNotification('Failed to load trending mods', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading trending mods:', error);
+        showNotification('Failed to load trending mods', 'error');
+    }
+}
+
+async function loadPopularMods() {
+    try {
+        const result = await ipcRenderer.invoke('get-modrinth-popular-mods');
+        if (result.success) {
+            displayMods(result.mods.hits, 'popular-mods');
+        } else {
+            showNotification('Failed to load popular mods', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading popular mods:', error);
+        showNotification('Failed to load popular mods', 'error');
+    }
+}
+
+function displayMods(mods, containerId) {
+    const container = document.getElementById(containerId);
+    
+    if (!mods || mods.length === 0) {
+        container.innerHTML = '<div class="no-results"><i class="fas fa-search"></i><h3>No mods found</h3><p>Try adjusting your search terms or filters</p></div>';
+        return;
+    }
+
+    const modsHtml = mods.map(mod => `
+        <div class="mod-card" onclick="showModDetails('${mod.project_id}')">
+            <div class="mod-card-header">
+                <img class="mod-card-icon" src="${mod.icon_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSJ1cmwoI2dyYWRpZW50KSIvPgo8ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudCIgeDE9IjAiIHkxPSIwIiB4Mj0iMjAwIiB5Mj0iMjAwIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdFRUE7c3RvcC1vcGFjaXR5OjEiIC8+CjxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6Izc2NEJBQjtzdG9wLW9wYWNpdHk6MSIgLz4KPC9saW5lYXJHcmFkaWVudD4KPC9kZWZzPgo8L3N2Zz4K'}" alt="${mod.title}">
+                <div class="mod-card-overlay">
+                    <div class="mod-card-title">${mod.title}</div>
+                    <div class="mod-card-author">By ${mod.author}</div>
+                </div>
+            </div>
+            <div class="mod-card-content">
+                <div class="mod-card-description">${mod.description || 'No description available'}</div>
+                <div class="mod-card-meta">
+                    <div class="mod-card-stats">
+                        <span><i class="fas fa-download"></i> ${formatNumber(mod.downloads)}</span>
+                        <span><i class="fas fa-heart"></i> ${formatNumber(mod.follows)}</span>
+                    </div>
+                    <span class="mod-date">${formatDate(mod.date_created)}</span>
+                </div>
+                <div class="mod-card-tags">
+                    ${mod.categories ? mod.categories.slice(0, 3).map(category => `<span class="mod-tag">${category}</span>`).join('') : ''}
+                    ${mod.loaders ? mod.loaders.slice(0, 2).map(loader => `<span class="mod-tag">${loader}</span>`).join('') : ''}
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    container.innerHTML = modsHtml;
+}
+
+function switchModrinthSection(section) {
+    // Hide all sections
+    document.querySelectorAll('.modrinth-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+    
+    // Show selected section
+    document.getElementById(`${section}-section`).classList.add('active');
+    event.target.classList.add('active');
+    
+    currentModrinthSection = section;
+}
+
+async function searchModrinthMods() {
+    const query = document.getElementById('modrinth-search').value.trim();
+    const filters = getCurrentModrinthFilters();
+    
+    if (!query) {
+        showNotification('Please enter a search term', 'warning');
+        return;
+    }
+    
+    try {
+        const result = await ipcRenderer.invoke('search-modrinth-mods', query, filters);
+        if (result.success) {
+            displayMods(result.results.hits, 'search-mods');
+            switchModrinthSection('search');
+        } else {
+            showNotification('Failed to search mods', 'error');
+        }
+    } catch (error) {
+        console.error('Error searching mods:', error);
+        showNotification('Failed to search mods', 'error');
+    }
+}
+
+function getCurrentModrinthFilters() {
+    return {
+        loader: document.getElementById('modrinth-loader-filter').value,
+        gameVersion: document.getElementById('modrinth-version-filter').value,
+        category: document.getElementById('modrinth-category-filter').value,
+        sortBy: document.getElementById('modrinth-sort-filter').value
+    };
+}
+
+function applyModrinthFilters() {
+    currentModrinthFilters = getCurrentModrinthFilters();
+    // Re-run current section with new filters
+    switch (currentModrinthSection) {
+        case 'featured':
+            loadFeaturedMods();
+            break;
+        case 'trending':
+            loadTrendingMods();
+            break;
+        case 'popular':
+            loadPopularMods();
+            break;
+        case 'search':
+            searchModrinthMods();
+            break;
+    }
+}
+
+function refreshModrinthData() {
+    loadModrinthData();
+    showNotification('Modrinth data refreshed', 'success');
+}
+
+function showModrinthFilters() {
+    // This could open a more detailed filter modal in the future
+    showNotification('Filters are already visible in the search section', 'info');
+}
+
+// Utility functions
+function formatNumber(num) {
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+}
+
+// Mod Details Functions
+async function showModDetails(projectId) {
+    try {
+        const result = await ipcRenderer.invoke('get-modrinth-mod-details', projectId);
+        if (result.success) {
+            currentModData = result.modData;
+            displayModDetails(result.modData);
+            document.getElementById('modrinth-mod-modal').style.display = 'block';
+        } else {
+            showNotification('Failed to load mod details', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading mod details:', error);
+        showNotification('Failed to load mod details', 'error');
+    }
+}
+
+function displayModDetails(modData) {
+    // Set basic mod info
+    document.getElementById('mod-title').textContent = modData.title || modData.name;
+    document.getElementById('mod-description').textContent = modData.description || 'No description available';
+    document.getElementById('mod-author').textContent = `By ${modData.team?.[0]?.user?.username || 'Unknown'}`;
+    document.getElementById('mod-downloads').textContent = `${formatNumber(modData.downloads || 0)} downloads`;
+    document.getElementById('mod-followers').textContent = `${formatNumber(modData.followers || 0)} followers`;
+    
+    // Set mod icon
+    const modIcon = document.getElementById('mod-icon');
+    if (modData.icon_url) {
+        modIcon.src = modData.icon_url;
+    } else {
+        modIcon.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiBmaWxsPSJ1cmwoI2dyYWRpZW50KSIvPgo8ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJncmFkaWVudCIgeDE9IjAiIHkxPSIwIiB4Mj0iMTIwIiB5Mj0iMTIwIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM2NjdFRUE7c3RvcC1vcGFjaXR5OjEiIC8+CjxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6Izc2NEJBQjtzdG9wLW9wYWNpdHk6MSIgLz4KPC9saW5lYXJHcmFkaWVudD4KPC9kZWZzPgo8L3N2Zz4K';
+    }
+    
+    // Set tags
+    const tagsContainer = document.getElementById('mod-tags');
+    const tags = [];
+    if (modData.categories) tags.push(...modData.categories);
+    if (modData.loaders) tags.push(...modData.loaders);
+    
+    tagsContainer.innerHTML = tags.slice(0, 6).map(tag => `<span class="mod-tag">${tag}</span>`).join('');
+    
+    // Load versions
+    loadModVersions(modData.project_id);
+    
+    // Load gallery
+    loadModGallery(modData);
+    
+    // Load dependencies
+    loadModDependencies(modData);
+}
+
+async function loadModVersions(projectId) {
+    try {
+        const result = await ipcRenderer.invoke('get-modrinth-mod-versions', projectId, {});
+        if (result.success) {
+            displayModVersions(result.versions);
+        } else {
+            showNotification('Failed to load mod versions', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading mod versions:', error);
+        showNotification('Failed to load mod versions', 'error');
+    }
+}
+
+function displayModVersions(versions) {
+    const versionsList = document.getElementById('versions-list');
+    
+    if (!versions || versions.length === 0) {
+        versionsList.innerHTML = '<p class="no-versions">No versions available</p>';
+        return;
+    }
+    
+    const versionsHtml = versions.map(version => `
+        <div class="version-item" onclick="selectModVersion('${version.id}')" data-version-id="${version.id}">
+            <div class="version-info">
+                <div class="version-name">${version.name}</div>
+                <div class="version-meta">
+                    ${version.game_versions.join(', ')} | ${version.loaders.join(', ')} | ${version.version_type}
+                </div>
+            </div>
+            <div class="version-actions">
+                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); installModVersion('${version.id}')">
+                    <i class="fas fa-download"></i> Install
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    versionsList.innerHTML = versionsHtml;
+}
+
+function selectModVersion(versionId) {
+    // Remove previous selection
+    document.querySelectorAll('.version-item').forEach(item => item.classList.remove('selected'));
+    
+    // Select new version
+    const versionItem = document.querySelector(`[data-version-id="${versionId}"]`);
+    if (versionItem) {
+        versionItem.classList.add('selected');
+        selectedModVersion = versionId;
+        document.getElementById('install-mod-btn').style.display = 'inline-block';
+    }
+}
+
+async function installModVersion(versionId) {
+    // Get current server selection
+    const activeServers = await getActiveServers();
+    
+    if (!activeServers || activeServers.length === 0) {
+        showNotification('No active servers found. Please start a server first.', 'warning');
+        return;
+    }
+    
+    // For now, install to the first active server
+    // In the future, this could show a server selection dialog
+    const targetServer = activeServers[0];
+    
+    try {
+        showNotification('Installing mod...', 'info');
+        const result = await ipcRenderer.invoke('install-modrinth-mod', versionId, targetServer.path);
+        if (result.success) {
+            showNotification(`Mod installed successfully to ${targetServer.name}`, 'success');
+        } else {
+            showNotification(result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error installing mod:', error);
+        showNotification('Failed to install mod', 'error');
+    }
+}
+
+async function installSelectedModVersion() {
+    if (!selectedModVersion) {
+        showNotification('Please select a version first', 'warning');
+        return;
+    }
+    
+    await installModVersion(selectedModVersion);
+}
+
+function loadModGallery(modData) {
+    const galleryContainer = document.getElementById('mod-gallery');
+    
+    if (!modData.gallery || modData.gallery.length === 0) {
+        galleryContainer.innerHTML = '<p class="no-gallery">No gallery images available</p>';
+        return;
+    }
+    
+    const galleryHtml = modData.gallery.map(image => `
+        <div class="gallery-item">
+            <img src="${image.url}" alt="${image.title || 'Gallery image'}" onclick="openImageModal('${image.url}')">
+        </div>
+    `).join('');
+    
+    galleryContainer.innerHTML = galleryHtml;
+}
+
+function loadModDependencies(modData) {
+    const dependenciesContainer = document.getElementById('mod-dependencies');
+    
+    if (!modData.versions || modData.versions.length === 0) {
+        dependenciesContainer.innerHTML = '<p class="no-dependencies">No dependencies information available</p>';
+        return;
+    }
+    
+    // Get dependencies from the latest version
+    const latestVersion = modData.versions[0];
+    const dependencies = latestVersion.dependencies || [];
+    
+    if (dependencies.length === 0) {
+        dependenciesContainer.innerHTML = '<p class="no-dependencies">No dependencies required</p>';
+        return;
+    }
+    
+    const dependenciesHtml = dependencies.map(dep => `
+        <div class="dependency-item">
+            <div class="dependency-name">${dep.project_id}</div>
+            <div class="dependency-type">${dep.dependency_type}</div>
+        </div>
+    `).join('');
+    
+    dependenciesContainer.innerHTML = dependenciesHtml;
+}
+
+function switchModTab(tab) {
+    // Hide all tab panels
+    document.querySelectorAll('.mod-tab-panel').forEach(panel => panel.classList.remove('active'));
+    document.querySelectorAll('.mod-tab').forEach(tabBtn => tabBtn.classList.remove('active'));
+    
+    // Show selected tab panel
+    document.getElementById(`${tab}-tab`).classList.add('active');
+    event.target.classList.add('active');
+}
+
+function filterModVersions() {
+    const loaderFilter = document.getElementById('version-loader-filter').value;
+    const gameFilter = document.getElementById('version-game-filter').value;
+    const typeFilter = document.getElementById('version-type-filter').value;
+    
+    const versionItems = document.querySelectorAll('.version-item');
+    
+    versionItems.forEach(item => {
+        const versionInfo = item.querySelector('.version-meta').textContent;
+        let show = true;
+        
+        if (loaderFilter && !versionInfo.includes(loaderFilter)) show = false;
+        if (gameFilter && !versionInfo.includes(gameFilter)) show = false;
+        if (typeFilter && !versionInfo.includes(typeFilter)) show = false;
+        
+        item.style.display = show ? 'flex' : 'none';
+    });
+}
+
+// Initialize Modrinth when tab is shown
+document.addEventListener('DOMContentLoaded', function() {
+    // Add tab change listener for Modrinth
+    const modrinthTab = document.querySelector('[data-tab="modrinth"]');
+    if (modrinthTab) {
+        modrinthTab.addEventListener('click', function() {
+            setTimeout(() => {
+                if (document.getElementById('modrinth').classList.contains('active')) {
+                    loadModrinthData();
+                }
+            }, 100);
+        });
+    }
+});

@@ -55,6 +55,10 @@
                     <i class="fas fa-cloud"></i>
                     <span>External Hosting</span>
                 </a>
+                <a href="#modrinth" class="nav-item" data-tab="modrinth">
+                    <i class="fas fa-puzzle-piece"></i>
+                    <span>Modrinth Browser</span>
+                </a>
                 <a href="#logs" class="nav-item" data-tab="logs">
                     <i class="fas fa-file-alt"></i>
                     <span>Logs</span>
@@ -286,6 +290,100 @@
                                                 <span class="stat-label">Uptime:</span>
                                                 <span class="stat-value" id="server-uptime">00:00:00</span>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modrinth Browser Tab -->
+                <div id="modrinth" class="tab-content">
+                    <div class="modrinth-container">
+                        <div class="modrinth-header">
+                            <h2>Modrinth Mod Browser</h2>
+                            <div class="modrinth-actions">
+                                <button class="btn btn-primary" onclick="refreshModrinthData()">
+                                    <i class="fas fa-sync"></i> Refresh
+                                </button>
+                                <button class="btn btn-secondary" onclick="showModrinthFilters()">
+                                    <i class="fas fa-filter"></i> Filters
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Search and Filters -->
+                        <div class="modrinth-search-section">
+                            <div class="search-box">
+                                <input type="text" id="modrinth-search" placeholder="Search mods..." onkeyup="searchModrinthMods()">
+                                <button class="btn btn-primary" onclick="searchModrinthMods()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="filter-controls">
+                                <select id="modrinth-loader-filter" onchange="applyModrinthFilters()">
+                                    <option value="">All Loaders</option>
+                                </select>
+                                <select id="modrinth-version-filter" onchange="applyModrinthFilters()">
+                                    <option value="">All Versions</option>
+                                </select>
+                                <select id="modrinth-category-filter" onchange="applyModrinthFilters()">
+                                    <option value="">All Categories</option>
+                                </select>
+                                <select id="modrinth-sort-filter" onchange="applyModrinthFilters()">
+                                    <option value="relevance">Relevance</option>
+                                    <option value="downloads">Downloads</option>
+                                    <option value="follows">Follows</option>
+                                    <option value="newest">Newest</option>
+                                    <option value="updated">Updated</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Featured Sections -->
+                        <div class="modrinth-sections">
+                            <div class="section-tabs">
+                                <button class="section-tab active" onclick="switchModrinthSection('featured')" data-section="featured">
+                                    <i class="fas fa-star"></i> Featured
+                                </button>
+                                <button class="section-tab" onclick="switchModrinthSection('trending')" data-section="trending">
+                                    <i class="fas fa-fire"></i> Trending
+                                </button>
+                                <button class="section-tab" onclick="switchModrinthSection('popular')" data-section="popular">
+                                    <i class="fas fa-trophy"></i> Popular
+                                </button>
+                                <button class="section-tab" onclick="switchModrinthSection('search')" data-section="search">
+                                    <i class="fas fa-search"></i> Search Results
+                                </button>
+                            </div>
+                            
+                            <div class="section-content">
+                                <div id="featured-section" class="modrinth-section active">
+                                    <div class="mods-grid" id="featured-mods">
+                                        <div class="loading-spinner"></div>
+                                    </div>
+                                </div>
+                                
+                                <div id="trending-section" class="modrinth-section">
+                                    <div class="mods-grid" id="trending-mods">
+                                        <div class="loading-spinner"></div>
+                                    </div>
+                                </div>
+                                
+                                <div id="popular-section" class="modrinth-section">
+                                    <div class="mods-grid" id="popular-mods">
+                                        <div class="loading-spinner"></div>
+                                    </div>
+                                </div>
+                                
+                                <div id="search-section" class="modrinth-section">
+                                    <div class="mods-grid" id="search-mods">
+                                        <div class="no-results" style="display: none;">
+                                            <i class="fas fa-search"></i>
+                                            <h3>No mods found</h3>
+                                            <p>Try adjusting your search terms or filters</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1006,6 +1104,93 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modrinth Mod Details Modal -->
+    <div id="modrinth-mod-modal" class="modal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-puzzle-piece"></i> Mod Details</h3>
+                <button class="modal-close" onclick="closeModal('modrinth-mod-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mod-details-container">
+                    <div class="mod-header">
+                        <div class="mod-icon">
+                            <img id="mod-icon" src="" alt="Mod Icon">
+                        </div>
+                        <div class="mod-info">
+                            <h4 id="mod-title">Loading...</h4>
+                            <p id="mod-description">Loading description...</p>
+                            <div class="mod-meta">
+                                <span class="mod-author" id="mod-author">By Unknown</span>
+                                <span class="mod-downloads" id="mod-downloads">0 downloads</span>
+                                <span class="mod-followers" id="mod-followers">0 followers</span>
+                            </div>
+                            <div class="mod-tags" id="mod-tags">
+                                <!-- Tags will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mod-content">
+                        <div class="mod-tabs">
+                            <button class="mod-tab active" onclick="switchModTab('versions')" data-tab="versions">
+                                <i class="fas fa-code-branch"></i> Versions
+                            </button>
+                            <button class="mod-tab" onclick="switchModTab('gallery')" data-tab="gallery">
+                                <i class="fas fa-images"></i> Gallery
+                            </button>
+                            <button class="mod-tab" onclick="switchModTab('dependencies')" data-tab="dependencies">
+                                <i class="fas fa-link"></i> Dependencies
+                            </button>
+                        </div>
+                        
+                        <div class="mod-tab-content">
+                            <div id="versions-tab" class="mod-tab-panel active">
+                                <div class="version-filters">
+                                    <select id="version-loader-filter" onchange="filterModVersions()">
+                                        <option value="">All Loaders</option>
+                                    </select>
+                                    <select id="version-game-filter" onchange="filterModVersions()">
+                                        <option value="">All Game Versions</option>
+                                    </select>
+                                    <select id="version-type-filter" onchange="filterModVersions()">
+                                        <option value="">All Types</option>
+                                        <option value="release">Release</option>
+                                        <option value="beta">Beta</option>
+                                        <option value="alpha">Alpha</option>
+                                    </select>
+                                </div>
+                                <div class="versions-list" id="versions-list">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                            
+                            <div id="gallery-tab" class="mod-tab-panel">
+                                <div class="mod-gallery" id="mod-gallery">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                            
+                            <div id="dependencies-tab" class="mod-tab-panel">
+                                <div class="mod-dependencies" id="mod-dependencies">
+                                    <div class="loading-spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('modrinth-mod-modal')">Close</button>
+                <button class="btn btn-primary" onclick="installSelectedModVersion()" id="install-mod-btn" style="display: none;">
+                    <i class="fas fa-download"></i> Install Selected Version
+                </button>
             </div>
         </div>
     </div>

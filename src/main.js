@@ -4,6 +4,7 @@ const { autoUpdater } = require('electron-updater');
 const { ServerManager } = require('./server/ServerManager');
 const { NetworkManager } = require('./network/NetworkManager');
 const { ExternalHostingManager } = require('./server/ExternalHostingManager');
+const { ModrinthManager } = require('./utils/ModrinthManager');
 const { SystemChecker } = require('./utils/SystemChecker');
 const { logger } = require('./utils/Logger');
 const fs = require('fs/promises'); // Added for file system operations
@@ -12,6 +13,7 @@ let mainWindow;
 let serverManager;
 let networkManager;
 let externalHostingManager;
+let modrinthManager;
 let systemChecker;
 
 // Auto-updater configuration
@@ -177,6 +179,11 @@ async function initializeManagers() {
     externalHostingManager = new ExternalHostingManager();
     await externalHostingManager.initialize();
     logger.server('ExternalHostingManager initialized successfully');
+    
+    // Initialize Modrinth manager
+    logger.system('Initializing ModrinthManager');
+    modrinthManager = new ModrinthManager();
+    logger.system('ModrinthManager initialized successfully');
     
     // Set up event listeners to forward server events to renderer
     serverManager.on('server-update', (data) => {
@@ -1094,6 +1101,189 @@ ipcMain.handle('decline-invite', async (event, inviteId) => {
     return { success: true, invite };
   } catch (error) {
     logger.error('Failed to decline invite:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Modrinth API IPC handlers
+ipcMain.handle('search-modrinth-mods', async (event, query, filters) => {
+  try {
+    logger.debug('Searching Modrinth mods', { query, filters });
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const results = await modrinthManager.searchMods(query, filters);
+    return { success: true, results };
+  } catch (error) {
+    logger.error('Failed to search Modrinth mods:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-modrinth-mod-details', async (event, projectId) => {
+  try {
+    logger.debug('Getting Modrinth mod details', { projectId });
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const modData = await modrinthManager.getModDetails(projectId);
+    return { success: true, modData };
+  } catch (error) {
+    logger.error('Failed to get Modrinth mod details:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-modrinth-mod-versions', async (event, projectId, filters) => {
+  try {
+    logger.debug('Getting Modrinth mod versions', { projectId, filters });
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const versions = await modrinthManager.getModVersions(projectId, filters);
+    return { success: true, versions };
+  } catch (error) {
+    logger.error('Failed to get Modrinth mod versions:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('install-modrinth-mod', async (event, versionId, serverPath) => {
+  try {
+    logger.debug('Installing Modrinth mod', { versionId, serverPath });
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const result = await modrinthManager.installModToServer(versionId, serverPath);
+    return { success: true, result };
+  } catch (error) {
+    logger.error('Failed to install Modrinth mod:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-modrinth-categories', async () => {
+  try {
+    logger.debug('Getting Modrinth categories');
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const categories = await modrinthManager.getCategories();
+    return { success: true, categories };
+  } catch (error) {
+    logger.error('Failed to get Modrinth categories:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-modrinth-loaders', async () => {
+  try {
+    logger.debug('Getting Modrinth loaders');
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const loaders = await modrinthManager.getLoaders();
+    return { success: true, loaders };
+  } catch (error) {
+    logger.error('Failed to get Modrinth loaders:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-modrinth-game-versions', async () => {
+  try {
+    logger.debug('Getting Modrinth game versions');
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const versions = await modrinthManager.getGameVersions();
+    return { success: true, versions };
+  } catch (error) {
+    logger.error('Failed to get Modrinth game versions:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-modrinth-featured-mods', async () => {
+  try {
+    logger.debug('Getting Modrinth featured mods');
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const mods = await modrinthManager.getFeaturedMods();
+    return { success: true, mods };
+  } catch (error) {
+    logger.error('Failed to get Modrinth featured mods:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-modrinth-trending-mods', async () => {
+  try {
+    logger.debug('Getting Modrinth trending mods');
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const mods = await modrinthManager.getTrendingMods();
+    return { success: true, mods };
+  } catch (error) {
+    logger.error('Failed to get Modrinth trending mods:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-modrinth-popular-mods', async () => {
+  try {
+    logger.debug('Getting Modrinth popular mods');
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const mods = await modrinthManager.getPopularMods();
+    return { success: true, mods };
+  } catch (error) {
+    logger.error('Failed to get Modrinth popular mods:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('check-modrinth-compatibility', async (event, projectId, gameVersion, loader) => {
+  try {
+    logger.debug('Checking Modrinth mod compatibility', { projectId, gameVersion, loader });
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const compatibility = await modrinthManager.checkModCompatibility(projectId, gameVersion, loader);
+    return { success: true, compatibility };
+  } catch (error) {
+    logger.error('Failed to check Modrinth mod compatibility:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('clear-modrinth-cache', async () => {
+  try {
+    logger.debug('Clearing Modrinth cache');
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    modrinthManager.clearCache();
+    return { success: true };
+  } catch (error) {
+    logger.error('Failed to clear Modrinth cache:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-modrinth-cache-stats', async () => {
+  try {
+    logger.debug('Getting Modrinth cache stats');
+    if (!modrinthManager) {
+      return { success: false, error: 'Modrinth manager not initialized' };
+    }
+    const stats = modrinthManager.getCacheStats();
+    return { success: true, stats };
+  } catch (error) {
+    logger.error('Failed to get Modrinth cache stats:', error);
     return { success: false, error: error.message };
   }
 });
