@@ -1,0 +1,75 @@
+name: 🔒 Repository Protection
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  protection:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚫 Close Unauthorized Pull Requests
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { owner, repo, number } = context.issue;
+            
+            // Check if PR is from external user
+            const pr = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: number
+            });
+            
+            const author = pr.data.user.login;
+            const isOwner = author === 'billibobby';
+            
+            if (!isOwner) {
+              // Close unauthorized PR
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: number,
+                state: 'closed'
+              });
+              
+              // Add comment explaining why
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: number,
+                body: `## 🚫 **UNAUTHORIZED CONTRIBUTION - CLOSED**
+
+### ⚠️ **IMPORTANT NOTICE**
+**This repository is protected and does not accept contributions from external users.**
+
+### 🔒 **Repository Protection Policy**
+- ✅ **Only @billibobby can make changes**
+- ✅ **No external pull requests accepted**
+- ✅ **No external contributions allowed**
+- ✅ **Repository is read-only for non-owners**
+
+### 📋 **What This Means**
+- **Your pull request has been closed automatically**
+- **No code will be merged from external sources**
+- **Only the repository owner can modify the codebase**
+
+### 🎯 **If You Want to Help**
+- **Report bugs** using the Issues tab
+- **Suggest features** using the Issues tab
+- **Fork the repository** for your own use
+- **Do not expect to contribute code**
+
+### 🔐 **Security**
+This protection ensures the integrity and security of the MultiMC Hub codebase.
+
+---
+
+**This pull request was automatically closed as unauthorized.**
+**Only @billibobby can make changes to this repository.**`
+              });
+              
+              console.log(`🚫 Closed unauthorized PR #${number} from ${author}`);
+            } else {
+              console.log(`✅ PR #${number} from owner ${author} - allowed`);
+            } 

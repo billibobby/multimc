@@ -1,6 +1,26 @@
+# 🔒 MultiMC Hub - Protected Repository
+
+## ⚠️ **IMPORTANT: REPOSITORY PROTECTION NOTICE**
+
+**This repository is PROTECTED and does NOT accept contributions from external users.**
+
+### 🚫 **No External Contributions**
+- ❌ **No pull requests accepted**
+- ❌ **No external code changes**
+- ❌ **No unauthorized modifications**
+- ✅ **Only @billibobby can make changes**
+
+### 🔐 **Security Policy**
+- **Repository is read-only** for all users except the owner
+- **All changes require owner approval**
+- **No external collaborators**
+- **Protected from unauthorized access**
+
+---
+
 # MultiMC Hub
 
-A modern, cross-platform Minecraft server management application built with Electron. MultiMC Hub allows you to easily create, manage, and host Minecraft servers with support for multiple mod loaders including Vanilla, Forge, Fabric, Quilt, and NeoForge.
+A standalone desktop application for managing Minecraft servers with network discovery, mod management, and multiplayer hosting.
 
 ## Features
 
