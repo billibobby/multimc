@@ -16,11 +16,36 @@
 - **No external collaborators**
 - **Protected from unauthorized access**
 
+### 📥 **How to Get Updates**
+- ✅ **Download releases** from the [Releases page](https://github.com/billibobby/multimc/releases)
+- ✅ **Report bugs** via Issues tab
+- ✅ **Suggest features** via Issues tab
+- ✅ **Fork** for personal use only
+
 ---
 
 # MultiMC Hub
 
 A standalone desktop application for managing Minecraft servers with network discovery, mod management, and multiplayer hosting.
+
+## 🚀 **Quick Start**
+
+### 📥 **Download Latest Version**
+1. Go to [Releases](https://github.com/billibobby/multimc/releases)
+2. Download the appropriate file for your OS:
+   - **Windows**: `MultiMC-Hub-Setup-x.x.x.exe`
+   - **macOS**: `MultiMC-Hub-x.x.x.dmg`
+   - **Linux**: `MultiMC-Hub-x.x.x.AppImage`
+
+### 🔧 **Installation**
+- **Windows**: Run the `.exe` installer
+- **macOS**: Open `.dmg` and drag to Applications
+- **Linux**: Run the `.AppImage` or use package manager
+
+### 🔄 **Getting Updates**
+- **Auto-updater**: Built into the application
+- **Manual**: Download from [Releases page](https://github.com/billibobby/multimc/releases)
+- **Repository**: Read-only, no external modifications allowed
 
 ## Features
 

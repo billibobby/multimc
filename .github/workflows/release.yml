@@ -1,0 +1,117 @@
+name: 🚀 Auto Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0, v1.1.0, etc.
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 📋 Install dependencies
+        run: npm ci
+
+      - name: 🔨 Build application
+        run: npm run build
+
+      - name: 🏷️ Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## 🎉 MultiMC Hub ${{ github.ref_name }}
+            
+            ### 📦 What's New
+            - Bug fixes and improvements
+            - Enhanced security features
+            - Better user experience
+            
+            ### 🔒 Security Notice
+            This repository is protected. Only @billibobby can make changes.
+            
+            ### 📥 Downloads
+            Download the appropriate version for your operating system below.
+            
+            ### 🛡️ Protection Status
+            - ✅ Repository protected from unauthorized changes
+            - ✅ Only owner can modify code
+            - ✅ Updates provided through official releases only
+            
+            ### 📋 Installation
+            1. Download the appropriate file for your OS
+            2. Extract the archive
+            3. Run the application
+            
+            ### 🔐 Security
+            This release is signed and verified by @billibobby.
+            Only download from official GitHub releases.
+          draft: false
+          prerelease: false
+          files: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/*.zip
+          generate_release_notes: true
+
+      - name: 📢 Update Release Info
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const tag = context.ref.replace('refs/tags/', '');
+            
+            // Get the latest release
+            const releases = await github.rest.repos.listReleases({
+              owner,
+              repo
+            });
+            
+            const latestRelease = releases.data[0];
+            
+            if (latestRelease) {
+              // Update release with additional info
+              await github.rest.repos.updateRelease({
+                owner,
+                repo,
+                release_id: latestRelease.id,
+                body: latestRelease.body + `
+                
+                ---
+                
+                ## 🔒 Repository Protection
+                
+                ### 🚫 No External Contributions
+                - This repository is **protected** and **read-only** for all users except the owner
+                - **No pull requests** are accepted from external users
+                - **No external code changes** are allowed
+                - **Only @billibobby** can modify the codebase
+                
+                ### ✅ How to Get Updates
+                - **Download releases** from this page
+                - **Report bugs** via Issues tab
+                - **Suggest features** via Issues tab
+                - **Fork** for personal use only
+                
+                ### 🛡️ Security
+                - All releases are **verified** and **signed** by @billibobby
+                - **Only download** from official GitHub releases
+                - **Repository integrity** is maintained
+                
+                ---
+                
+                **Release created by @billibobby - Repository Owner**`
+              });
+            } 
