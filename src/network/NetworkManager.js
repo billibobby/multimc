@@ -41,7 +41,6 @@ class NetworkManager extends EventEmitter {
   }
 
   async findAvailablePort(startPort) {
-    const net = require('net');
     
     return new Promise((resolve) => {
       const server = net.createServer();

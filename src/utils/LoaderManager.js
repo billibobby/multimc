@@ -558,7 +558,7 @@ class LoaderManager {
                   console.log(`✅ Found server files in ${dir}, adding version ${version}`);
                 } else {
                   console.log(`❌ No server files found in ${dir}`);
-                }
+            }
               } catch (error) {
                 console.error(`Error checking fabric directory ${dir}:`, error);
               }
@@ -744,7 +744,6 @@ class LoaderManager {
     await fs.copy(minecraftJarPath, serverJarPath);
     
     // Run Fabric installer to create server
-    const { spawn } = require('child_process');
     const javaPath = await this.getJavaPath();
     
     if (!javaPath) {
@@ -1101,7 +1100,6 @@ class LoaderManager {
 
   async getJavaPath() {
     return new Promise((resolve) => {
-      const { exec } = require('child_process');
       const command = process.platform === 'win32' ? 'where java' : 'which java';
       exec(command, (error, stdout) => {
         if (error) {

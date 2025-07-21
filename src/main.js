@@ -9,6 +9,9 @@ const { CloudSyncManager } = require('./utils/CloudSyncManager');
 const { SystemChecker } = require('./utils/SystemChecker');
 const { logger } = require('./utils/Logger');
 const fs = require('fs/promises'); // Added for file system operations
+const { exec } = require('child_process');
+const util = require('util');
+const net = require('net');
 
 let mainWindow;
 let serverManager;
@@ -632,8 +635,6 @@ ipcMain.handle('clear-logs', async () => {
 // Get Minecraft server logs
 ipcMain.handle('kill-process', async (event, pid) => {
   try {
-    const { exec } = require('child_process');
-    const util = require('util');
     const execAsync = util.promisify(exec);
     
     if (process.platform === 'darwin' || process.platform === 'linux') {
@@ -652,9 +653,6 @@ ipcMain.handle('kill-process', async (event, pid) => {
 
 ipcMain.handle('check-port', async (event, port) => {
   try {
-    const net = require('net');
-    const { exec } = require('child_process');
-    const util = require('util');
     const execAsync = util.promisify(exec);
     
     return new Promise(async (resolve) => {

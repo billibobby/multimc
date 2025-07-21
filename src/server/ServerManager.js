@@ -170,8 +170,8 @@ class ServerManager extends EventEmitter {
         }
       } else {
         // For other loaders, copy just the server JAR
-        const localJarPath = path.join(serverDir, 'server.jar');
-        await fs.copy(serverJarPath, localJarPath);
+      const localJarPath = path.join(serverDir, 'server.jar');
+      await fs.copy(serverJarPath, localJarPath);
       }
       
       // Create server properties
@@ -557,10 +557,6 @@ max-chained-neighbor-updates=1000000
   async validateRequiredFiles(config) {
     console.log(`Validating required files for ${config.type} server version ${config.version}...`);
     
-    const fs = require('fs-extra');
-    const path = require('path');
-    const os = require('os');
-    
     // Get the Minecraft version from the loader version
     let minecraftVersion;
     if (config.type === 'vanilla') {
@@ -623,7 +619,6 @@ max-chained-neighbor-updates=1000000
   }
 
   async getJavaPath() {
-    const { exec } = require('child_process');
     const { promisify } = require('util');
     const execAsync = promisify(exec);
     

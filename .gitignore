@@ -177,7 +177,7 @@ test-*.js
 # Backup files
 *.bak
 *.backup
-*.old
+*.old 
 
 # Temporary files
 *.tmp
