@@ -1275,8 +1275,21 @@ async function refreshMods() {
 }
 
 function closeModal(modalId) {
+    console.log('closeModal called with:', modalId);
     const modal = document.getElementById(modalId);
-    modal.classList.remove('active');
+    if (modal) {
+        console.log('Modal found, current display:', modal.style.display);
+        // Handle both display style and class-based modals
+        if (modal.style.display !== undefined) {
+            modal.style.display = 'none';
+            console.log('Modal hidden using display:none');
+        } else {
+            modal.classList.remove('active');
+            console.log('Modal hidden using class removal');
+        }
+    } else {
+        console.error('Modal not found:', modalId);
+    }
 }
 
 // Profile functions
