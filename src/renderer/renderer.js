@@ -1,4 +1,6 @@
 const { ipcRenderer } = require('electron');
+const fs = require('fs');
+const path = require('path');
 
 // Global state
 let currentTab = 'dashboard';
@@ -40,8 +42,6 @@ function debugLog(message, type = 'info') {
     
     // Also log to a debug file
     try {
-        const fs = require('fs');
-        const path = require('path');
         const debugFile = path.join(__dirname, 'debug.log');
         fs.appendFileSync(debugFile, logMessage + '\n');
     } catch (error) {
@@ -54,8 +54,6 @@ const originalConsoleLog = console.log;
 console.log = function(...args) {
     originalConsoleLog.apply(console, args);
     try {
-        const fs = require('fs');
-        const path = require('path');
         const debugFile = path.join(__dirname, 'debug.log');
         const message = args.map(arg => 
             typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
